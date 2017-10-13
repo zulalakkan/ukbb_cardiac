@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-import os, time, cv2, random
+import os, time, random
 import numpy as np, nibabel as nib
-from scipy import misc, ndimage
 import tensorflow as tf
-import logging
 from network import *
+from image_utils import *
 
 
 """ Training parameters """
@@ -43,14 +42,15 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf
                            'Path for saving the trained model.')
 
 
-def get_random_batch(filename_list, batch_size, seq_name, image_size=192, centre_roi=False,
+def get_random_batch(filename_list, batch_size, seq_name, image_size=192,
                      data_augmentation=False, shift=0, rotate=0, scale=0, intensity=0, flip=False):
-    # Randomly select batch_size images from the filename_list
+    # TODO: remove seq_name, which should belong to the pre-processing step
+    # Randomly select batch_size images from filename_list
     n_file = len(filename_list)
-    n_select = 0
+    n_selected = 0
     images = []
     labels = []
-    while n_select < batch_size:
+    while n_selected < batch_size:
         rand_index = random.randrange(n_file)
         image_name, label_name = filename_list[rand_index]
         if os.path.exists(image_name) and os.path.exists(label_name):
@@ -60,45 +60,44 @@ def get_random_batch(filename_list, batch_size, seq_name, image_size=192, centre
             image = nib.load(image_name).get_data()
             label = nib.load(label_name).get_data()
 
-            # DEBUG
+            # Handle exceptions
             if image.shape != label.shape:
-                logging.debug('Error possibly due to image conversion: mismatched size, image.shape = {0}, label.shape = {1}'.format(
-                    image.shape, label.shape))
-                logging.debug('Not using {0}, {1}'.format(image_name, label_name))
+                print('Error: mismatched size, image.shape = {0}, label.shape = {1}'.format(image.shape, label.shape))
+                print('Skip {0}, {1}'.format(image_name, label_name))
                 continue
 
             if image.max() < 1e-6:
-                logging.debug('Error possibly due to image conversion: black image, image.max = {0}'.format(
-                        image.max()))
-                logging.debug('Not using {0} {1}'.format(image_name, label_name))
+                print('Error: blank image, image.max = {0}'.format(image.max()))
+                print('Skip {0} {1}'.format(image_name, label_name))
                 continue
 
-            # Normalise size
+            # Normalise the image size
             X, Y, Z = image.shape
-            if centre_roi:
-                cx, cy, cz = [int(np.round(np.mean(idx))) for idx in np.where(label > 0)]
-            else:
-                cx, cy = int(X / 2), int(Y / 2)
+            cx, cy = int(X / 2), int(Y / 2)
             image = crop_image(image, cx, cy, image_size)
             label = crop_image(label, cx, cy, image_size)
 
             # Intensity rescaling
-            image = scale_intensity(image, (1.0, 99.0))
+            image = rescale_intensity(image, (1.0, 99.0))
 
-            # Change labels for la_2ch and la_4ch
+            # Change the labels for la_2ch and la_4ch
+            # la_2ch: LA: 4 -> 1
+            # la_4ch: LA: 4 -> 1, RA: 5 -> 2
             if seq_name == 'la_2ch':
                 label = (label == 4).astype(np.int32)
             elif seq_name == 'la_4ch':
                 label = ((label == 4) + (label == 5) * 2).astype(np.int32)
 
+            # Append the image slices to the batch
             # Use list for appending, which is much faster than numpy array
             for z in range(Z):
                 images += [image[:, :, z]]
                 labels += [label[:, :, z]]
 
             # Increase the counter
-            n_select += 1
+            n_selected += 1
 
+    # Convert to a numpy array
     images = np.array(images, dtype=np.float32)
     labels = np.array(labels, dtype=np.int32)
 
@@ -108,7 +107,9 @@ def get_random_batch(filename_list, batch_size, seq_name, image_size=192, centre
 
     # Perform data augmentation
     if data_augmentation:
-        images, labels = data_augmenter(images, labels, shift=shift, rotate=rotate, scale=scale, intensity=intensity, flip=flip)
+        images, labels = data_augmenter(images, labels,
+                                        shift=shift, rotate=rotate, scale=scale,
+                                        intensity=intensity, flip=flip)
     return images, labels
 
 
@@ -225,13 +226,6 @@ def main(argv=None):
         print('Error: unknown optimizer {0}.'.format(FLAGS.optimizer))
         exit(0)
 
-    # Main loop
-    shift = 10
-    rotate = 10
-    scale = 0.1
-    intensity = 0.1
-    flip = False
-
     # Model name and directory
     model_name = '{0}_{1}_level{2}_filter{3}_{4}_{5}_batch{6}_iter{7}_lr{8}'.format(
         FLAGS.model, FLAGS.seq_name, n_level, n_filter[0], ''.join([str(x) for x in n_block]),
@@ -276,11 +270,12 @@ def main(argv=None):
             print('Iteration {0}: training...'.format(iter))
             start_time_iter = time.time()
 
-            images, labels = get_random_batch(data_list['train'], FLAGS.train_batch_size,
+            images, labels = get_random_batch(data_list['train'],
+                                              FLAGS.train_batch_size,
                                               FLAGS.seq_name, image_size=FLAGS.image_size,
-                                              centre_roi=FLAGS.centre_roi, data_augmentation=True,
-                                              shift=shift, rotate=rotate, scale=scale,
-                                              intensity=intensity, flip=flip)
+                                              data_augmentation=True,
+                                              shift=10, rotate=10, scale=0.1,
+                                              intensity=0.1, flip=False)
 
             # Stochastic optimisation using this batch
             _, train_loss, train_acc = sess.run([train_op, loss, accuracy],
@@ -294,9 +289,10 @@ def main(argv=None):
             # After every ten iterations, we perform validation
             if iter % 10 == 0:
                 print('Iteration {0}: validation...'.format(iter))
-                images, labels = get_random_batch(data_list['validation'], FLAGS.validation_batch_size,
+                images, labels = get_random_batch(data_list['validation'],
+                                                  FLAGS.validation_batch_size,
                                                   FLAGS.seq_name, image_size=FLAGS.image_size,
-                                                  centre_roi=FLAGS.centre_roi, data_augmentation=False)
+                                                  data_augmentation=False)
 
                 if FLAGS.seq_name == 'sa':
                     validation_loss, validation_acc, validation_dice_lv, validation_dice_myo, validation_dice_rv = \
