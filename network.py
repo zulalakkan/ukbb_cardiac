@@ -1,3 +1,17 @@
+# Copyright 2017, Wenjia Bai. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the 'License');
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an 'AS IS' BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
 import tensorflow as tf
 import numpy as np
 
@@ -142,7 +156,7 @@ def build_FCN(image, n_class, n_level, n_filter, n_block, same_dim=32, fc=64):
     # Learn fine-to-coarse features at each resolution level
     for l in range(0, n_level):
         with tf.name_scope('conv{0}'.format(l)):
-            # If this is the first level (l = 0), keep the resolution
+            # If this is the first level (l = 0), keep the resolution.
             # Otherwise, convolve with a stride of 2, i.e. downsample by a factor of 2
             strides = 1 if l == 0 else 2
             # For each resolution level, perform n_block[l] times convolutions
@@ -158,8 +172,8 @@ def build_FCN(image, n_class, n_level, n_filter, n_block, same_dim=32, fc=64):
     # Exemplar calculation:
     #   batch size 20 x image size 192 x 192 x feature dimension 256 x floating data type 4
     #   = 755 MB for a feature map
-    #   We also need to remember that there is associated memory of the same size used for
-    #   gradient calculation.
+    #   Apart from this, there is also associated memory of the same size used for gradient
+    #   calculation.
     with tf.name_scope('same_dim'):
         for l in range(0, n_level):
             net['conv{0}_same_dim'.format(l)] = conv2d_bn_relu(net['conv{0}'.format(l)],
@@ -259,4 +273,3 @@ def build_ResNet(image, n_class, n_level, n_filter, n_block,
         x = conv2d_bn_relu(x, filters=fc, kernel_size=1)
         logits = tf.layers.conv2d(x, filters=n_class, kernel_size=1, padding='same')
     return logits
-
