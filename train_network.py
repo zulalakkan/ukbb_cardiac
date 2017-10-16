@@ -35,8 +35,8 @@ tf.app.flags._global_parser.add_argument('--model', choices=['FCN', 'FCN_legacy'
 tf.app.flags._global_parser.add_argument('--optimizer', choices=['Adam', 'SGD', 'Momentum'],
                                          default='Adam', help='Optimizer.')
 tf.app.flags.DEFINE_string('dataset_dir', '/vol/medic02/users/wbai/data/cardiac_atlas/UKBB_2964/sa',
-                           'Path to the dataset directory, which is split into training, validation \
-                           and test subdirectories.')
+                           'Path to the dataset directory, which is split into training, validation '
+                           'and test subdirectories.')
 tf.app.flags.DEFINE_string('log_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/log',
                            'Directory for saving the log file.')
 tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/model',
