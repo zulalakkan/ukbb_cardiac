@@ -23,8 +23,7 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags._global_parser.add_argument('--seq_name', choices=['sa', 'la_2ch', 'la_4ch'],
                                          default='sa', help="Sequence name.")
 tf.app.flags.DEFINE_string('testset_dir', '/vol/biomedic2/wbai/tmp/github/test',
-                           'Path to the test set directory, under which images are organised \
-                           in subdirectories for each subject.')
+                           'Path to the test set directory, under which images are organised in subdirectories for each subject.')
 tf.app.flags.DEFINE_string('dest_dir', '/vol/biomedic2/wbai/tmp/github/output',
                            'Path to the destination directory, where the segmentations will be saved.')
 tf.app.flags.DEFINE_string('model_path', '/vol/biomedic2/wbai/tmp/github/model/FCN_sa_level5_filter16_22333_Adam_batch2_iter50000_lr0.001.ckpt-50000',
