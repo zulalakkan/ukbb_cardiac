@@ -35,15 +35,16 @@ tf.app.flags._global_parser.add_argument('--model', choices=['FCN', 'FCN_legacy'
 tf.app.flags._global_parser.add_argument('--optimizer', choices=['Adam', 'SGD', 'Momentum'],
                                          default='Adam', help='Optimizer.')
 tf.app.flags.DEFINE_string('dataset_dir', '/vol/medic02/users/wbai/data/cardiac_atlas/UKBB_2964/sa',
-                           'Path to the dataset, which is split into training, validation and test.')
+                           'Path to the dataset directory, which is split into training, validation \
+                           and test subdirectories.')
 tf.app.flags.DEFINE_string('log_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/log',
-                           'Path for saving the log file.')
+                           'Directory for saving the log file.')
 tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/model',
-                           'Path for saving the trained model.')
+                           'Directory for saving the trained model.')
 
 
-def get_random_batch(filename_list, batch_size, seq_name, image_size=192,
-                     data_augmentation=False, shift=0, rotate=0, scale=0, intensity=0, flip=False):
+def get_random_batch(filename_list, batch_size, seq_name, image_size=192, data_augmentation=False,
+                     shift=0.0, rotate=0.0, scale=0.0, intensity=0.0, flip=False):
     # TODO: remove seq_name, which should belong to the pre-processing step
     # Randomly select batch_size images from filename_list
     n_file = len(filename_list)
@@ -81,6 +82,7 @@ def get_random_batch(filename_list, batch_size, seq_name, image_size=192,
             image = rescale_intensity(image, (1.0, 99.0))
 
             # Change the labels for la_2ch and la_4ch
+            # TODO: this should be performed at the pre-processing step.
             # la_2ch: LA: 4 -> 1
             # la_4ch: LA: 4 -> 1, RA: 5 -> 2
             if seq_name == 'la_2ch':
@@ -164,13 +166,15 @@ def main(argv=None):
     n_level = FLAGS.num_level
 
     # The number of filters at each resolution level
+    # Follow the VGG philosophy, increasing the dimension by a factor of 2 for each level
     n_filter = []
     for i in range(n_level):
         n_filter += [FLAGS.num_filter * pow(2, i)]
     print(n_filter)
 
     # Build the neural network, which outputs the logits, i.e. the unscaled values just before
-    # the softmax layer, which will normalise the logits into the probabilities.
+    # the softmax layer, which will then normalise the logits into the probabilities.
+    n_block = []
     if FLAGS.model == 'FCN_legacy':
         n_block = [2, 2, 3, 3, 3]
         logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
@@ -265,9 +269,9 @@ def main(argv=None):
         sess.run(tf.global_variables_initializer())
 
         # Iterate
-        for iter in range(1, 1 + FLAGS.train_iteration):
+        for iteration in range(1, 1 + FLAGS.train_iteration):
             # For each iteration, we randomly choose a batch of subjects for training
-            print('Iteration {0}: training...'.format(iter))
+            print('Iteration {0}: training...'.format(iteration))
             start_time_iter = time.time()
 
             images, labels = get_random_batch(data_list['train'],
@@ -287,8 +291,8 @@ def main(argv=None):
             train_writer.add_summary(summary, iter)
 
             # After every ten iterations, we perform validation
-            if iter % 10 == 0:
-                print('Iteration {0}: validation...'.format(iter))
+            if iteration % 10 == 0:
+                print('Iteration {0}: validation...'.format(iteration))
                 images, labels = get_random_batch(data_list['validation'],
                                                   FLAGS.validation_batch_size,
                                                   FLAGS.seq_name, image_size=FLAGS.image_size,
@@ -319,10 +323,11 @@ def main(argv=None):
                 elif FLAGS.seq_name == 'la_4ch':
                     summary.value.add(tag='dice_la', simple_value=validation_dice_la)
                     summary.value.add(tag='dice_ra', simple_value=validation_dice_ra)
-                validation_writer.add_summary(summary, iter)
+                validation_writer.add_summary(summary, iteration)
 
                 # Print the results for this epoch
-                print('Iteration {} of {} took {:.3f}s'.format(iter, FLAGS.train_iteration, time.time() - start_time_iter))
+                print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
+                                                               time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
                 print('  training accuracy:\t\t{:.2f}%'.format(train_acc * 100))
                 print('  validation loss: \t\t{:.6f}'.format(validation_loss))
@@ -340,20 +345,21 @@ def main(argv=None):
                 # Log
                 if FLAGS.seq_name == 'sa':
                     f_log.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}\n'.format(
-                        iter, time.time() - start_time, train_loss, train_acc, validation_loss,
+                        iteration, time.time() - start_time, train_loss, train_acc, validation_loss,
                         validation_acc, validation_dice_lv, validation_dice_myo, validation_dice_rv))
                 elif FLAGS.seq_name == 'la_2ch':
                     f_log.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}\n'.format(
-                        iter, time.time() - start_time, train_loss, train_acc, validation_loss,
+                        iteration, time.time() - start_time, train_loss, train_acc, validation_loss,
                         validation_acc, validation_dice_la))
                 elif FLAGS.seq_name == 'la_4ch':
                     f_log.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}\n'.format(
-                        iter, time.time() - start_time, train_loss, train_acc, validation_loss,
+                        iteration, time.time() - start_time, train_loss, train_acc, validation_loss,
                         validation_acc, validation_dice_la, validation_dice_ra))
                 f_log.flush()
             else:
                 # Print the results for this epoch:
-                print('Iteration {} of {} took {:.3f}s'.format(iter, FLAGS.train_iteration, time.time() - start_time_iter))
+                print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
+                                                               time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
                 print('  training accuracy:\t\t{:.2f}%'.format(train_acc * 100))
 
@@ -361,8 +367,8 @@ def main(argv=None):
             # One epoch needs to go through
             #   1000 subjects * 2 time frames = 2000 images = 1000 training iterations
             # if one iteration processes 2 images.
-            if iter % 1000 == 0:
-                saver.save(sess, save_path=os.path.join(model_dir, '{0}.ckpt'.format(model_name)), global_step=iter)
+            if iteration % 1000 == 0:
+                saver.save(sess, save_path=os.path.join(model_dir, '{0}.ckpt'.format(model_name)), global_step=iteration)
 
         # Close the logger and summary writers
         f_log.close()

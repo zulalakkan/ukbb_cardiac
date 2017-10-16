@@ -14,8 +14,8 @@
 # ==============================================================================
 import cv2
 import numpy as np
-from scipy import ndimage
 import tensorflow as tf
+from scipy import ndimage
 
 
 def tf_categorical_accuracy(pred, truth):
