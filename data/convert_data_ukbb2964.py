@@ -54,8 +54,8 @@ if __name__ == '__main__':
     for sub_path in sorted(os.listdir(data_path)):
         sub_path = os.path.join(data_path, sub_path)
         # For each subject in the subdirectory
-        for data in sorted(os.listdir(sub_path)):
-            data_dir = os.path.join(sub_path, data)
+        for eid in sorted(os.listdir(sub_path)):
+            data_dir = os.path.join(sub_path, eid)
             # Only convert data if there is manual annotation, i.e. cvi42 files
             if os.path.exists(os.path.join(data_dir, '{0}_cvi42.zip'.format(eid))):
                 # Check the annotator's name
