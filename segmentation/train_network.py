@@ -22,24 +22,24 @@ from image_utils import *
 """ Training parameters """
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('image_size', 192, 'Image size after cropping.')
-tf.app.flags.DEFINE_integer('train_batch_size', 2, 'Number of subjects for each training batch.')
-tf.app.flags.DEFINE_integer('validation_batch_size', 2, 'Number of subjects for each validation batch.')
+tf.app.flags.DEFINE_integer('train_batch_size', 2, 'Number of images for each training batch.')
+tf.app.flags.DEFINE_integer('validation_batch_size', 2, 'Number of images for each validation batch.')
 tf.app.flags.DEFINE_integer('train_iteration', 50000, 'Number of training iterations.')
 tf.app.flags.DEFINE_integer('num_filter', 16, 'Number of filters for the first convolution layer.')
 tf.app.flags.DEFINE_integer('num_level', 5, 'Number of network levels.')
 tf.app.flags.DEFINE_float('learning_rate', 1e-3, 'Learning rate.')
 tf.app.flags._global_parser.add_argument('--seq_name', choices=['sa', 'la_2ch', 'la_4ch'],
                                          default='sa', help='Sequence name for training.')
-tf.app.flags._global_parser.add_argument('--model', choices=['FCN', 'FCN_legacy', 'ResNet', 'ResNet_legacy'],
+tf.app.flags._global_parser.add_argument('--model', choices=['FCN', 'FCN_legacy', 'ResNet'],
                                          default='FCN', help='Model name.')
 tf.app.flags._global_parser.add_argument('--optimizer', choices=['Adam', 'SGD', 'Momentum'],
                                          default='Adam', help='Optimizer.')
 tf.app.flags.DEFINE_string('dataset_dir', '/vol/medic02/users/wbai/data/cardiac_atlas/UKBB_2964/sa',
                            'Path to the dataset directory, which is split into training, validation '
                            'and test subdirectories.')
-tf.app.flags.DEFINE_string('log_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/log',
+tf.app.flags.DEFINE_string('log_dir', '/vol/bitbucket/wbai/ukbb_cardiac/log',
                            'Directory for saving the log file.')
-tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/uk_biobank_cardiac/model',
+tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/ukbb_cardiac/model',
                            'Directory for saving the trained model.')
 
 
@@ -170,23 +170,19 @@ def main(argv=None):
     n_filter = []
     for i in range(n_level):
         n_filter += [FLAGS.num_filter * pow(2, i)]
-    print(n_filter)
+    print('Number of filters at each level = ' + n_filter)
 
     # Build the neural network, which outputs the logits, i.e. the unscaled values just before
     # the softmax layer, which will then normalise the logits into the probabilities.
     n_block = []
-    if FLAGS.model == 'FCN_legacy':
-        n_block = [2, 2, 3, 3, 3]
-        logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
-                           same_dim=n_filter[0], fc=64)
     if FLAGS.model == 'FCN':
         n_block = [2, 2, 3, 3, 3]
         logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
                            same_dim=32, fc=64)
-    elif FLAGS.model == 'ResNet_legacy':
-        n_block = [2, 2, 3, 4, 6]
-        logits = build_ResNet(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
-                              use_bottleneck=False, same_dim=n_filter[0], fc=64)
+    elif FLAGS.model == 'FCN_legacy':
+        n_block = [2, 2, 3, 3, 3]
+        logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
+                           same_dim=n_filter[0], fc=64)
     elif FLAGS.model == 'ResNet':
         n_block = [2, 2, 3, 4, 6]
         logits = build_ResNet(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
@@ -244,11 +240,11 @@ def main(argv=None):
     csv_name = os.path.join(FLAGS.log_dir, '{0}_log.csv'.format(model_name))
     f_log = open(csv_name, 'w')
     if FLAGS.seq_name == 'sa':
-        f_log.write('iter,time,train_loss,train_acc,test_loss,test_acc,test_dice_lv,test_dice_myo,test_dice_rv\n')
+        f_log.write('iteration,time,train_loss,train_acc,test_loss,test_acc,test_dice_lv,test_dice_myo,test_dice_rv\n')
     elif FLAGS.seq_name == 'la_2ch':
-        f_log.write('iter,time,train_loss,train_acc,test_loss,test_acc,test_dice_la\n')
+        f_log.write('iteration,time,train_loss,train_acc,test_loss,test_acc,test_dice_la\n')
     elif FLAGS.seq_name == 'la_4ch':
-        f_log.write('iter,time,train_loss,train_acc,test_loss,test_acc,test_dice_la,test_dice_ra\n')
+        f_log.write('iteration,time,train_loss,train_acc,test_loss,test_acc,test_dice_la,test_dice_ra\n')
 
     # Start the tensorflow session
     with tf.Session() as sess:
@@ -288,7 +284,7 @@ def main(argv=None):
             summary = tf.Summary()
             summary.value.add(tag='loss', simple_value=train_loss)
             summary.value.add(tag='accuracy', simple_value=train_acc)
-            train_writer.add_summary(summary, iter)
+            train_writer.add_summary(summary, iteration)
 
             # After every ten iterations, we perform validation
             if iteration % 10 == 0:
