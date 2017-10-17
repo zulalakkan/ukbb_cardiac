@@ -39,7 +39,7 @@ tf.app.flags.DEFINE_string('dataset_dir', '/vol/medic02/users/wbai/data/cardiac_
                            'and test subdirectories.')
 tf.app.flags.DEFINE_string('log_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/log',
                            'Directory for saving the log file.')
-tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/cardiac_cnn_tf/Biobank/model',
+tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/uk_biobank_cardiac/model',
                            'Directory for saving the trained model.')
 
 
