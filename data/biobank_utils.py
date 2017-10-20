@@ -28,6 +28,23 @@ import SimpleITK as sitk
 import numpy as np, nibabel as nib
 
 
+def repl(m):
+    """ Function for reformatting the date """
+    return '{}{}-{}-20{}'.format(m.group(1), m.group(2), m.group(3), m.group(4))
+
+
+def process_manifest(name, name2):
+    """
+        Read the lines in the manifest.csv file and check whether the date format contains
+        a comma, which needs to be removed since it causes problems in parsing the file.
+        """
+    with open(name2, 'w') as f2:
+        with open(name, 'r') as f:
+            for line in f:
+                line2 = re.sub('([A-Z])(\w{2}) (\d{1,2}), 20(\d{2})', repl, line)
+                f2.write(line2)
+
+
 class BaseImage(object):
     """ Representation of an image by an array, an image-to-world affine matrix and a temporal spacing """
     volume = np.array([])
@@ -315,7 +332,8 @@ class Biobank_Dataset(object):
                                 # RV endocardium first, then LV epicardium,
                                 # then LV endocardium, then RA and LA.
                                 #
-                                # Issue: there is a problem in very rare cases, e.g. eid 2485225,
+                                # Issue: there is a problem in very rare cases,
+                                # e.g. eid 2485225, 2700750, 2862965, 2912168,
                                 # where LV epicardial contour is not a closed contour. This problem
                                 # can only be solved if we could have a better definition of contours.
                                 # Thanks for Elena Lukaschuk and Stefan Piechnik for pointing this out.

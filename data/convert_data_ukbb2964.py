@@ -29,26 +29,9 @@ from biobank_utils import *
 import parse_cvi42_xml
 
 
-def repl(m):
-    """ Function for reformatting the date """
-    return '{}{}-{}-20{}'.format(m.group(1), m.group(2), m.group(3), m.group(4))
-
-
-def process_manifest(name, name2):
-    """
-        Read the lines in the manifest.csv file and check whether the date format contains
-        a comma, which needs to be removed since it causes problems in parsing the file.
-        """
-    with open(name2, 'w') as f2:
-        with open(name, 'r') as f:
-            for line in f:
-                line2 = re.sub('([A-Z])(\w{2}) (\d{1,2}), 20(\d{2})', repl, line)
-                f2.write(line2)
-
-
 if __name__ == '__main__':
     # Path to the downloaded data
-    data_path = '/vol/vipdata/data/biobank/cardiac/Application_2964/data'
+    data_path = '/vol/vipdata/data/biobank/cardiac/Application_2964/data_path'
 
     # For each subdirectory
     for sub_path in sorted(os.listdir(data_path)):
