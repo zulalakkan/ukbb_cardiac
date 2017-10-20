@@ -16,11 +16,30 @@
     This script demonstrates the segmentation of a test cardiac MR image using
     a pre-trained neural network.
     """
+import os, urllib.request
 
 
 if __name__ == '__main__':
-    # Download image
+    # Download exemplar short-axis images
+    URL = 'https://www.doc.ic.ac.uk/~wbai/data/ukbb_cardiac/'
+    print('Downloading images ...')
+    for i in [1, 2]:
+        if not os.path.exists('demo_image/{0}'.format(i)):
+            os.makedirs('demo_image/{0}'.format(i))
+            urllib.request.urlretrieve(URL + 'sa_{0}.nii.gz'.format(i),
+                                       os.path.join('demo_image/{0}/sa.nii.gz'.format(i)))
 
-    # Download network
+    # Download the trained network
+    print('Downloading the trained network ...')
+    if not os.path.exists('trained_model'):
+        os.makedirs('trained_model')
+    for f in ['FCN_sa.meta', 'FCN_sa.index', 'FCN_sa.data-00000-of-00001']:
+        urllib.request.urlretrieve(URL + f, os.path.join('trained_model', f))
 
-    # Segmentation
+    # Perform segmentation
+    CUDA_VISIBLE_DEVICES = 5
+    print('Performing segmentation ...')
+    os.system('CUDA_VISIBLE_DEVICES={0} python3 deploy_network.py '
+              '--testset_dir demo_image --dest_dir demo_image --model_path trained_model/FCN_sa '
+              '--process_seq --clinical_measures'.format(CUDA_VISIBLE_DEVICES))
+    print('Done.')

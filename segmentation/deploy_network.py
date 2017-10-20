@@ -61,6 +61,7 @@ if __name__ == '__main__':
                 nim = nib.load(image_name)
                 image = nim.get_data()
                 X, Y, Z, T = image.shape
+                orig_image = image
                 print('  Segmenting ...'.format(image_name))
 
                 # Intensity rescaling
@@ -91,6 +92,12 @@ if __name__ == '__main__':
                     pred_fr = pred_fr[x_pre:x_pre + X, y_pre:y_pre + Y]
                     pred[:, :, :, t] = pred_fr
 
+                # ED frame defaults to be the first time frame.
+                # Determine ES frame according to the minimum LV volume.
+                k = {}
+                k['ED'] = 0
+                k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
+
                 # Save the segmentation
                 if FLAGS.save_seg:
                     print('  Saving segmentation ...')
@@ -101,19 +108,16 @@ if __name__ == '__main__':
                     nim2 = nib.Nifti1Image(pred, nim.affine)
                     nim2.header['pixdim'] = nim.header['pixdim']
                     nib.save(nim2, '{0}/seg_{1}.nii.gz'.format(dest_data_dir, FLAGS.seq_name))
-                    os.system('ln -sf {0}/{1}.nii.gz {2}'.format(data_dir, FLAGS.seq_name, dest_data_dir))
+
+                    for fr in ['ED', 'ES']:
+                        nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]], nim.affine),
+                                 '{0}/{1}_{2}.nii.gz'.format(dest_data_dir, FLAGS.seq_name, fr))
+                        nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine),
+                                 '{0}/seg_{1}_{2}.nii.gz'.format(dest_data_dir, FLAGS.seq_name, fr))
 
                 # Evaluate the clinical measures
                 if FLAGS.clinical_measure and FLAGS.seq_name == 'sa':
                     print('  Evaluating clinical measures ...')
-
-                    # ED frame defaults to be the first time frame.
-                    # Determine ES frame according to the minimum LV volume.
-                    k = {}
-                    k['ED'] = 0
-                    k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
-
-                    # Calculate clinical measures
                     measure = {}
                     dx, dy, dz = nim.header['pixdim'][1:4]
                     volume_per_voxel = dx * dy * dz * 1e-3
@@ -175,7 +179,6 @@ if __name__ == '__main__':
                         nim2 = nib.Nifti1Image(pred, nim.affine)
                         nim2.header['pixdim'] = nim.header['pixdim']
                         nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(dest_data_dir, FLAGS.seq_name, fr))
-                        os.system('ln -sf {0}/{1}_{2}.nii.gz {3}'.format(data_dir, FLAGS.seq_name, fr, dest_data_dir))
 
                     # Evaluate the clinical measures
                     if FLAGS.clinical_measure and FLAGS.seq_name == 'sa':
@@ -199,6 +202,8 @@ if __name__ == '__main__':
         if FLAGS.clinical_measure and FLAGS.seq_name == 'sa':
             column_names = ['LVEDV (mL)', 'LVESV (mL)', 'LVM (g)', 'RVEDV (mL)', 'RVESV (mL)']
             df = pd.DataFrame(table, index=data_list, columns=column_names)
-            df.to_csv(os.path.join(FLAGS.dest_dir, 'clinical_measure.csv'))
+            csv_name = os.path.join(FLAGS.dest_dir, '../clinical_measure.csv')
+            print('  Saving clinical measures at {0} ...'.format(csv_name))
+            df.to_csv(csv_name)
 
         print("Evaluation took {:.3f}s for {:d} subjects.".format(time.time() - start_time, len(data_list)))
