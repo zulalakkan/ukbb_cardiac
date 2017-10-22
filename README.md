@@ -37,6 +37,8 @@ There is one parameter in the script, *CUDA_VISIBLE_DEVICES*, which controls whi
 
 This script will download two exemplar cardiac MR images and a pre-trained network, then segment the images using the network, saving the segmentation results *seg_sa.nii.gz* and also saving the clinical measures in a spreadsheet *clinical_measure.csv*, including the left ventricular end-diastolic volume (LVEDV), end-systolic volume (LVESV), myocardial mass (LVM) and the right ventricular end-diastolic volume (RVEDV), end-systolic volume (RVESV).
 
+**Speed** The speed of image segmentation depends several factors, such as whether to use GPU or CPU, the GPU hardware, the test image size etc. In my case, if I use a Nvidia Titan K80 GPU and process short-axis cardiac MR images of 600 subjects, it takes about 2 seconds to segment each subject, with the image size to be 198x208x10x50 (i.e. 10 image slices and 50 time frames). However, if I only process a few images as in the demo, it would takes longer for each subject, because allocating and initialising the GPU device takes a long time.
+
 **To know more** If you want to know more about how the network works and how it is trained, you can read these following files under the *segmentation* directory:
 * network.py, which describes the neural network architecture;
 * train_network.py, which trains a network on a dataset with both images and manual annotations;
@@ -50,3 +52,8 @@ I have written the following scripts for preparing the UK Biobank cardiac imagin
 * convert_data_ukbb2964.py and prepare_data_ukbb2964.py, which prepare the cardiac images and manual annotation of 5,000 subjects under UK Biobank Application 2964. This is the dataset that I used for training the network.
 * download_data_ukbb_general.py, which downloads cardiac MR images and converts the image format from dicom to nifti for a general UK Biobank application. You may adapt this script to prepare your data, if they also come from the UK Biobank.
 
+## References
+
+A great thanks to the collaborative effort on manually annotating the cardiac image data:
+
+[1] Petersen, S. et al. Reference ranges for cardiac structure and function using cardiovascular magnetic resonance (CMR) in Caucasians from the UK Biobank population cohort. Journal of Cardiovascular Magnetic Resonance 19, 18 (2017). [doi](https://doi.org/10.1186/s12968-017-0327-9)
