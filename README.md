@@ -12,7 +12,7 @@ The toolbox is developed using [Python](https://www.python.org) programming lang
 
 The toolbox depends on some external libraries which need to be installed, including:
 
-* [tensorflow]((https://www.tensorflow.org) for deep learning;
+* [tensorflow](https://www.tensorflow.org) for deep learning;
 * numpy and scipy for numerical computation;
 * pandas and python-dateutil for handling spreadsheet;
 * pydicom, SimpleITK for handling dicom images
@@ -29,6 +29,7 @@ If you have problems in installing tensorflow, you can read this page [Installin
 ## Usage
 
 **A quick demo**
+
 You can go to the *segmentation* directory and run the demo file there:
 ```
 cd segmentation
@@ -42,7 +43,7 @@ This script will download two exemplar cardiac MR images and a pre-trained netwo
 If you want to know more about how the network works and how it is trained, you can read these following files under the *segmentation* directory:
 * network.py, which describes the neural network architecture;
 * train_network.py, which trains a network on a dataset with both images and manual annotations;
-* deploy_network.py, which deploys the trained network onto new images.
+* deploy_network.py, which deploys the trained network onto new images, i.e. your test set.
 
 You will notice there is another directory named *data*, which contains the scripts for preparing the training dataset. For a machine learning project, data preparation step including acquisition, cleaning, format conversion etc normally takes at least the same amount of your time and headache, if nor more, as the machine learning step. But this is a crucial part, as all the following work (your novel machine learning ideas) needs the data.
 
