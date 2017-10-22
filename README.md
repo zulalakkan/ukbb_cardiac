@@ -40,7 +40,7 @@ This script will download two exemplar cardiac MR images and a pre-trained netwo
 **To know more** If you want to know more about how the network works and how it is trained, you can read these following files under the *segmentation* directory:
 * network.py, which describes the neural network architecture;
 * train_network.py, which trains a network on a dataset with both images and manual annotations;
-* deploy_network.py, which deploys the trained network onto new images, i.e. your test set.
+* deploy_network.py, which deploys the trained network onto new images. If you are interested in deploying the pre-trained network to more UK Biobank cardiac image set, this is the file that you need to read.
 
 **Data preparation** You will notice there is another directory named *data*, which contains the scripts for preparing the training dataset. For a machine learning project, data preparation step including acquisition, cleaning, format conversion etc normally takes at least the same amount of your time and headache, if nor more, as the machine learning step. But this is a crucial part, as all the following work (your novel machine learning ideas) needs the data.
 

@@ -27,7 +27,7 @@ tf.app.flags.DEFINE_string('testset_dir', '/vol/biomedic2/wbai/tmp/github/test',
                            'subdirectories for each subject.')
 tf.app.flags.DEFINE_string('dest_dir', '/vol/biomedic2/wbai/tmp/github/output',
                            'Path to the destination directory, where the segmentations will be saved.')
-tf.app.flags.DEFINE_string('model_path', '/vol/biomedic2/wbai/tmp/github/model/FCN_sa_level5_filter16_22333_Adam_batch2_iter50000_lr0.001.ckpt-50000',
+tf.app.flags.DEFINE_string('model_path', '/vol/biomedic2/wbai/tmp/github/model/FCN_sa.ckpt-50000',
                            'Path to the saved trained model.')
 tf.app.flags.DEFINE_boolean('process_seq', True, "Process a time sequence of images.")
 tf.app.flags.DEFINE_boolean('save_seg', True, "Save segmentation.")
