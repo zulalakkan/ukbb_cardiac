@@ -28,9 +28,7 @@ If you have problems in installing tensorflow, you can read this page [Installin
 
 ## Usage
 
-**A quick demo**
-
-You can go to the *segmentation* directory and run the demo file there:
+**A quick demo** You can go to the *segmentation* directory and run the demo file there:
 ```
 cd segmentation
 python3 demo.py
@@ -39,8 +37,7 @@ There is one parameter in the script, *CUDA_VISIBLE_DEVICES*, which controls whi
 
 This script will download two exemplar cardiac MR images and a pre-trained network, then segment the images using the network, saving the segmentation results *seg_sa.nii.gz* and also saving the clinical measures in a spreadsheet *clinical_measure.csv*, including the left ventricular end-diastolic volume (LVEDV), end-systolic volume (LVESV), myocardial mass (LVM) and the right ventricular end-diastolic volume (RVEDV), end-systolic volume (RVESV).
 
-**To know more**
-If you want to know more about how the network works and how it is trained, you can read these following files under the *segmentation* directory:
+**To know more** If you want to know more about how the network works and how it is trained, you can read these following files under the *segmentation* directory:
 * network.py, which describes the neural network architecture;
 * train_network.py, which trains a network on a dataset with both images and manual annotations;
 * deploy_network.py, which deploys the trained network onto new images, i.e. your test set.
