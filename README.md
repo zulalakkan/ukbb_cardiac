@@ -24,8 +24,6 @@ The most convenient way to install these libraries is to use pip3 (or pip for Py
 pip3 install tensorflow-gpu numpy scipy pandas python-dateutil pydicom SimpleITK nibabel opencv-python
 ```
 
-If you have problems in installing tensorflow, you can read this page [Installing TensorFlow](https://www.tensorflow.org/install/) for more information.
-
 ## Usage
 
 **A quick demo** You can go to the *segmentation* directory and run the demo file there:
@@ -44,7 +42,7 @@ This script will download two exemplar cardiac MR images and a pre-trained netwo
 * train_network.py, which trains a network on a dataset with both images and manual annotations;
 * deploy_network.py, which deploys the trained network onto new images, i.e. your test set.
 
-You will notice there is another directory named *data*, which contains the scripts for preparing the training dataset. For a machine learning project, data preparation step including acquisition, cleaning, format conversion etc normally takes at least the same amount of your time and headache, if nor more, as the machine learning step. But this is a crucial part, as all the following work (your novel machine learning ideas) needs the data.
+**Data preparation** You will notice there is another directory named *data*, which contains the scripts for preparing the training dataset. For a machine learning project, data preparation step including acquisition, cleaning, format conversion etc normally takes at least the same amount of your time and headache, if nor more, as the machine learning step. But this is a crucial part, as all the following work (your novel machine learning ideas) needs the data.
 
 In my project, I use imaging data from [the UK Biobank](http://www.ukbiobank.ac.uk/), which is a very large clinical research resource. Its sub-project, [the UK Biobank Imaging Study](http://imaging.ukbiobank.ac.uk/), aims to conduct detailed MRI imaging scans of the vital organs of over 100,000 participants. Researchers can [apply](http://www.ukbiobank.ac.uk/register-apply/) to use the UK Biobank data resource for health-related research in the public interest.
 
@@ -56,4 +54,4 @@ I have written the following scripts for preparing the UK Biobank cardiac imagin
 
 A great thanks to the collaborative effort on manually annotating the cardiac image data:
 
-[1] Petersen, S. et al. Reference ranges for cardiac structure and function using cardiovascular magnetic resonance (CMR) in Caucasians from the UK Biobank population cohort. Journal of Cardiovascular Magnetic Resonance 19, 18 (2017). [doi](https://doi.org/10.1186/s12968-017-0327-9)
+[1] Petersen, S. et al. Reference ranges for cardiac structure and function using cardiovascular magnetic resonance (CMR) in Caucasians from the UK Biobank population cohort. Journal of Cardiovascular Magnetic Resonance, 19:18, 2017. [doi](https://doi.org/10.1186/s12968-017-0327-9)
