@@ -37,7 +37,7 @@ if __name__ == '__main__':
         urllib.request.urlretrieve(URL + f, os.path.join('trained_model', f))
 
     # Perform segmentation
-    CUDA_VISIBLE_DEVICES = 5
+    CUDA_VISIBLE_DEVICES = 0
     print('Performing segmentation ...')
     os.system('CUDA_VISIBLE_DEVICES={0} python3 deploy_network.py '
               '--testset_dir demo_image --dest_dir demo_image --model_path trained_model/FCN_sa '
