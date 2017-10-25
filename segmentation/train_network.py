@@ -143,6 +143,10 @@ def main(argv=None):
     print('Placeholder image_pl.name = ' + image_pl.name)
     print('Placeholder label_pl.name = ' + label_pl.name)
 
+    # Placeholder for the training phase
+    # This flag is important for the batch_normalization layer to function properly.
+    training_pl = tf.placeholder(tf.bool, shape=[], name='training')
+
     # Determine the number of label classes according to the manual annotation procedure
     # for each image sequence.
     n_class = 0
@@ -170,7 +174,7 @@ def main(argv=None):
     n_filter = []
     for i in range(n_level):
         n_filter += [FLAGS.num_filter * pow(2, i)]
-    print('Number of filters at each level = ' + n_filter)
+    print('Number of filters at each level = ', n_filter)
 
     # Build the neural network, which outputs the logits, i.e. the unscaled values just before
     # the softmax layer, which will then normalise the logits into the probabilities.
@@ -178,15 +182,15 @@ def main(argv=None):
     if FLAGS.model == 'FCN':
         n_block = [2, 2, 3, 3, 3]
         logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
-                           same_dim=32, fc=64)
+                           training=training_pl, same_dim=32, fc=64)
     elif FLAGS.model == 'FCN_legacy':
         n_block = [2, 2, 3, 3, 3]
         logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
-                           same_dim=n_filter[0], fc=64)
+                           training=training_pl, same_dim=n_filter[0], fc=64)
     elif FLAGS.model == 'ResNet':
         n_block = [2, 2, 3, 4, 6]
         logits = build_ResNet(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
-                              use_bottleneck=False, same_dim=32, fc=64)
+                              training=training_pl, use_bottleneck=False, same_dim=32, fc=64)
     else:
         print('Error: unknown model {0}.'.format(FLAGS.model))
         exit(0)
@@ -212,19 +216,24 @@ def main(argv=None):
 
     # Optimiser
     lr = FLAGS.learning_rate
-    if FLAGS.optimizer == 'SGD':
-        print('Using SGD optimizer.')
-        train_op = tf.train.GradientDescentOptimizer(learning_rate=lr).minimize(loss)
-    elif FLAGS.optimizer == 'Adam':
-        print('Using Adam optimizer.')
-        train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
-    elif FLAGS.optimizer == 'Momentum':
-        print('Using Momentum optimizer with Nesterov momentum.')
-        train_op = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9,
-                                              use_nesterov=True).minimize(loss)
-    else:
-        print('Error: unknown optimizer {0}.'.format(FLAGS.optimizer))
-        exit(0)
+
+    # We need to add the operators associated with batch_normalization to the optimiser, according to
+    # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        if FLAGS.optimizer == 'SGD':
+            print('Using SGD optimizer.')
+            train_op = tf.train.GradientDescentOptimizer(learning_rate=lr).minimize(loss)
+        elif FLAGS.optimizer == 'Adam':
+            print('Using Adam optimizer.')
+            train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
+        elif FLAGS.optimizer == 'Momentum':
+            print('Using Momentum optimizer with Nesterov momentum.')
+            train_op = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9,
+                                                  use_nesterov=True).minimize(loss)
+        else:
+            print('Error: unknown optimizer {0}.'.format(FLAGS.optimizer))
+            exit(0)
 
     # Model name and directory
     model_name = '{0}_{1}_level{2}_filter{3}_{4}_{5}_batch{6}_iter{7}_lr{8}'.format(
@@ -279,7 +288,7 @@ def main(argv=None):
 
             # Stochastic optimisation using this batch
             _, train_loss, train_acc = sess.run([train_op, loss, accuracy],
-                                                {image_pl: images, label_pl: labels})
+                                                {image_pl: images, label_pl: labels, training_pl: True})
 
             summary = tf.Summary()
             summary.value.add(tag='loss', simple_value=train_loss)
@@ -297,7 +306,7 @@ def main(argv=None):
                 if FLAGS.seq_name == 'sa':
                     validation_loss, validation_acc, validation_dice_lv, validation_dice_myo, validation_dice_rv = \
                         sess.run([loss, accuracy, dice_lv, dice_myo, dice_rv],
-                                 {image_pl: images, label_pl: labels})
+                                 {image_pl: images, label_pl: labels, training_pl: False})
                 elif FLAGS.seq_name == 'la_2ch':
                     validation_loss, validation_acc, validation_dice_la = \
                         sess.run([loss, accuracy, dice_la],
