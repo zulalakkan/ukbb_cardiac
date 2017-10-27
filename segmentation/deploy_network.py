@@ -42,12 +42,13 @@ if __name__ == '__main__':
         saver = tf.train.import_meta_graph('{0}.meta'.format(FLAGS.model_path))
         saver.restore(sess, '{0}'.format(FLAGS.model_path))
 
-        print('Start evaluating on the test set...')
+        print('Start evaluating on the test set ...')
         start_time = time.time()
 
         # Process each subject subdirectory
         data_list = sorted(os.listdir(FLAGS.testset_dir))
         table = []
+        table_time = []
         for data in data_list:
             print(data)
             data_dir = os.path.join(FLAGS.testset_dir, data)
@@ -62,7 +63,9 @@ if __name__ == '__main__':
                 image = nim.get_data()
                 X, Y, Z, T = image.shape
                 orig_image = image
-                print('  Segmenting ...'.format(image_name))
+
+                print('  Segmenting full sequence ...')
+                start_seg_time = time.time()
 
                 # Intensity rescaling
                 image = rescale_intensity(image, (1, 99))
@@ -85,12 +88,17 @@ if __name__ == '__main__':
                     image_fr = np.expand_dims(image_fr, axis=-1)
 
                     # Evaluate the network
-                    prob_fr, pred_fr = sess.run(['prob:0', 'pred:0'], feed_dict={'image:0': image_fr})
+                    prob_fr, pred_fr = sess.run(['prob:0', 'pred:0'],
+                                                feed_dict={'image:0': image_fr, 'training:0': False})
 
                     # Transpose and crop the segmentation to recover the original size
                     pred_fr = np.transpose(pred_fr, axes=(1, 2, 0))
                     pred_fr = pred_fr[x_pre:x_pre + X, y_pre:y_pre + Y]
                     pred[:, :, :, t] = pred_fr
+
+                seg_time = time.time() - start_seg_time
+                print('  Segmentation time = {:3f}s'.format(seg_time))
+                table_time += [seg_time]
 
                 # ED frame defaults to be the first time frame.
                 # Determine ES frame according to the minimum LV volume.
@@ -146,7 +154,9 @@ if __name__ == '__main__':
                     X, Y = image.shape[:2]
                     if image.ndim == 2:
                         image = np.expand_dims(image, axis=2)
-                    print('  Segmenting ...'.format(image_name))
+
+                    print('  Segmenting {} frame ...'.format(fr))
+                    start_seg_time = time.time()
 
                     # Intensity rescaling
                     image = rescale_intensity(image, (1, 99))
@@ -163,11 +173,16 @@ if __name__ == '__main__':
                     image = np.expand_dims(image, axis=-1)
 
                     # Evaluate the network
-                    prob, pred = sess.run(['prob:0', 'pred:0'], feed_dict={'image:0': image})
+                    prob, pred = sess.run(['prob:0', 'pred:0'],
+                                          feed_dict={'image:0': image, 'training:0': False})
 
                     # Transpose and crop the segmentation to recover the original size
                     pred = np.transpose(pred, axes=(1, 2, 0))
                     pred = pred[x_pre:x_pre + X, y_pre:y_pre + Y]
+
+                    seg_time = time.time() - start_seg_time
+                    print('  Segmentation time = {:3f}s'.format(seg_time))
+                    table_time += [seg_time]
 
                     # Save the segmentation
                     if FLAGS.save_seg:
@@ -206,4 +221,8 @@ if __name__ == '__main__':
             print('  Saving clinical measures at {0} ...'.format(csv_name))
             df.to_csv(csv_name)
 
+        if FLAGS.process_seq:
+            print('Average segmentation time = {:.3f}s per sequence'.format(np.mean(table_time)))
+        else:
+            print('Average segmentation time = {:.3f}s per frame'.format(np.mean(table_time)))
         print("Evaluation took {:.3f}s for {:d} subjects.".format(time.time() - start_time, len(data_list)))

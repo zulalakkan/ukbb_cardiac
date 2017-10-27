@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_integer('num_level', 5, 'Number of network levels.')
 tf.app.flags.DEFINE_float('learning_rate', 1e-3, 'Learning rate.')
 tf.app.flags._global_parser.add_argument('--seq_name', choices=['sa', 'la_2ch', 'la_4ch'],
                                          default='sa', help='Sequence name for training.')
-tf.app.flags._global_parser.add_argument('--model', choices=['FCN', 'FCN_legacy', 'ResNet'],
+tf.app.flags._global_parser.add_argument('--model', choices=['FCN', 'ResNet'],
                                          default='FCN', help='Model name.')
 tf.app.flags._global_parser.add_argument('--optimizer', choices=['Adam', 'SGD', 'Momentum'],
                                          default='Adam', help='Optimizer.')
@@ -43,9 +43,8 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/ukbb_cardiac/m
                            'Directory for saving the trained model.')
 
 
-def get_random_batch(filename_list, batch_size, seq_name, image_size=192, data_augmentation=False,
+def get_random_batch(filename_list, batch_size, image_size=192, data_augmentation=False,
                      shift=0.0, rotate=0.0, scale=0.0, intensity=0.0, flip=False):
-    # TODO: remove seq_name, which should belong to the pre-processing step
     # Randomly select batch_size images from filename_list
     n_file = len(filename_list)
     n_selected = 0
@@ -80,15 +79,6 @@ def get_random_batch(filename_list, batch_size, seq_name, image_size=192, data_a
 
             # Intensity rescaling
             image = rescale_intensity(image, (1.0, 99.0))
-
-            # Change the labels for la_2ch and la_4ch
-            # TODO: this should be performed at the pre-processing step.
-            # la_2ch: LA: 4 -> 1
-            # la_4ch: LA: 4 -> 1, RA: 5 -> 2
-            if seq_name == 'la_2ch':
-                label = (label == 4).astype(np.int32)
-            elif seq_name == 'la_4ch':
-                label = ((label == 4) + (label == 5) * 2).astype(np.int32)
 
             # Append the image slices to the batch
             # Use list for appending, which is much faster than numpy array
@@ -146,6 +136,7 @@ def main(argv=None):
     # Placeholder for the training phase
     # This flag is important for the batch_normalization layer to function properly.
     training_pl = tf.placeholder(tf.bool, shape=[], name='training')
+    print('Placeholder training_pl.name = ' + training_pl.name)
 
     # Determine the number of label classes according to the manual annotation procedure
     # for each image sequence.
@@ -174,7 +165,7 @@ def main(argv=None):
     n_filter = []
     for i in range(n_level):
         n_filter += [FLAGS.num_filter * pow(2, i)]
-    print('Number of filters at each level = ', n_filter)
+    print('Number of filters at each level =', n_filter)
 
     # Build the neural network, which outputs the logits, i.e. the unscaled values just before
     # the softmax layer, which will then normalise the logits into the probabilities.
@@ -183,10 +174,6 @@ def main(argv=None):
         n_block = [2, 2, 3, 3, 3]
         logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
                            training=training_pl, same_dim=32, fc=64)
-    elif FLAGS.model == 'FCN_legacy':
-        n_block = [2, 2, 3, 3, 3]
-        logits = build_FCN(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
-                           training=training_pl, same_dim=n_filter[0], fc=64)
     elif FLAGS.model == 'ResNet':
         n_block = [2, 2, 3, 4, 6]
         logits = build_ResNet(image_pl, n_class, n_level=n_level, n_filter=n_filter, n_block=n_block,
@@ -281,7 +268,7 @@ def main(argv=None):
 
             images, labels = get_random_batch(data_list['train'],
                                               FLAGS.train_batch_size,
-                                              FLAGS.seq_name, image_size=FLAGS.image_size,
+                                              image_size=FLAGS.image_size,
                                               data_augmentation=True,
                                               shift=10, rotate=10, scale=0.1,
                                               intensity=0.1, flip=False)
@@ -300,7 +287,7 @@ def main(argv=None):
                 print('Iteration {0}: validation...'.format(iteration))
                 images, labels = get_random_batch(data_list['validation'],
                                                   FLAGS.validation_batch_size,
-                                                  FLAGS.seq_name, image_size=FLAGS.image_size,
+                                                  image_size=FLAGS.image_size,
                                                   data_augmentation=False)
 
                 if FLAGS.seq_name == 'sa':
@@ -310,11 +297,11 @@ def main(argv=None):
                 elif FLAGS.seq_name == 'la_2ch':
                     validation_loss, validation_acc, validation_dice_la = \
                         sess.run([loss, accuracy, dice_la],
-                                 {image_pl: images, label_pl: labels})
+                                 {image_pl: images, label_pl: labels, training_pl: False})
                 elif FLAGS.seq_name == 'la_4ch':
                     validation_loss, validation_acc, validation_dice_la, validation_dice_ra = \
                         sess.run([loss, accuracy, dice_la, dice_ra],
-                                 {image_pl: images, label_pl: labels})
+                                 {image_pl: images, label_pl: labels, training_pl: False})
 
                 summary = tf.Summary()
                 summary.value.add(tag='loss', simple_value=validation_loss)
