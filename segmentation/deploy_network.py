@@ -22,7 +22,7 @@ from image_utils import *
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags._global_parser.add_argument('--seq_name', choices=['sa', 'la_2ch', 'la_4ch'],
                                          default='sa', help="Sequence name.")
-tf.app.flags.DEFINE_string('testset_dir', '/vol/biomedic2/wbai/tmp/github/test',
+tf.app.flags.DEFINE_string('test_dir', '/vol/biomedic2/wbai/tmp/github/test',
                            'Path to the test set directory, under which images are organised in '
                            'subdirectories for each subject.')
 tf.app.flags.DEFINE_string('dest_dir', '/vol/biomedic2/wbai/tmp/github/output',
@@ -46,12 +46,12 @@ if __name__ == '__main__':
         start_time = time.time()
 
         # Process each subject subdirectory
-        data_list = sorted(os.listdir(FLAGS.testset_dir))
+        data_list = sorted(os.listdir(FLAGS.test_dir))
         table = []
         table_time = []
         for data in data_list:
             print(data)
-            data_dir = os.path.join(FLAGS.testset_dir, data)
+            data_dir = os.path.join(FLAGS.test_dir, data)
 
             if FLAGS.process_seq:
                 # Process the temporal sequence
@@ -225,4 +225,6 @@ if __name__ == '__main__':
             print('Average segmentation time = {:.3f}s per sequence'.format(np.mean(table_time)))
         else:
             print('Average segmentation time = {:.3f}s per frame'.format(np.mean(table_time)))
-        print("Evaluation took {:.3f}s for {:d} subjects.".format(time.time() - start_time, len(data_list)))
+        process_time = time.time() - start_time
+        print('Evaluation took {:.3f}s for {:d} subjects ({:.3f}s per subjects).'.format(
+            process_time, len(data_list), process_time / len(data_list)))
