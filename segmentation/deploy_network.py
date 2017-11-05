@@ -47,6 +47,7 @@ if __name__ == '__main__':
 
         # Process each subject subdirectory
         data_list = sorted(os.listdir(FLAGS.test_dir))
+        processed_list = []
         table = []
         table_time = []
         for data in data_list:
@@ -56,6 +57,10 @@ if __name__ == '__main__':
             if FLAGS.process_seq:
                 # Process the temporal sequence
                 image_name = '{0}/{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+
+                if not os.path.exists(image_name):
+                    print(' Image {0} does not exist. Skip.'.format(image_name))
+                    continue
 
                 # Read the image
                 print('  Reading {} ...'.format(image_name))
@@ -104,7 +109,11 @@ if __name__ == '__main__':
                 # Determine ES frame according to the minimum LV volume.
                 k = {}
                 k['ED'] = 0
-                k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
+                if FLAGS.seq_name == 'sa':
+                    k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
+                else:
+                    k['ES'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
+                print('  ED frame = {:d}, ES frame = {:d}'.format(k['ED'], k['ES']))
 
                 # Save the segmentation
                 if FLAGS.save_seg:
@@ -124,7 +133,7 @@ if __name__ == '__main__':
                                  '{0}/seg_{1}_{2}.nii.gz'.format(dest_data_dir, FLAGS.seq_name, fr))
 
                 # Evaluate the clinical measures
-                if FLAGS.clinical_measure and FLAGS.seq_name == 'sa':
+                if FLAGS.seq_name == 'sa' and FLAGS.clinical_measure:
                     print('  Evaluating clinical measures ...')
                     measure = {}
                     dx, dy, dz = nim.header['pixdim'][1:4]
@@ -141,8 +150,15 @@ if __name__ == '__main__':
                             measure['ED']['LVM'],
                             measure['ED']['RVV'], measure['ES']['RVV']]
                     table += [line]
+                    processed_list += [data]
             else:
                 # Process ED and ES time frames
+                image_ED_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ED')
+                image_ES_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ES')
+                if not os.path.exists(image_ED_name) or not os.path.exists(image_ES_name):
+                    print(' Image {0} or {1} does not exist. Skip.'.format(image_ED_name, image_ES_name))
+                    continue
+
                 measure = {}
                 for fr in ['ED', 'ES']:
                     image_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
@@ -196,7 +212,7 @@ if __name__ == '__main__':
                         nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(dest_data_dir, FLAGS.seq_name, fr))
 
                     # Evaluate the clinical measures
-                    if FLAGS.clinical_measure and FLAGS.seq_name == 'sa':
+                    if FLAGS.seq_name == 'sa' and FLAGS.clinical_measure:
                         print('  Evaluating clinical measures ...')
                         dx, dy, dz = nim.header['pixdim'][1:4]
                         volume_per_voxel = dx * dy * dz * 1e-3
@@ -212,12 +228,13 @@ if __name__ == '__main__':
                             measure['ED']['LVM'],
                             measure['ED']['RVV'], measure['ES']['RVV']]
                     table += [line]
+                    processed_list += [data]
 
         # Save the spreadsheet for the clinical measures
-        if FLAGS.clinical_measure and FLAGS.seq_name == 'sa':
+        if FLAGS.seq_name == 'sa' and FLAGS.clinical_measure:
             column_names = ['LVEDV (mL)', 'LVESV (mL)', 'LVM (g)', 'RVEDV (mL)', 'RVESV (mL)']
-            df = pd.DataFrame(table, index=data_list, columns=column_names)
-            csv_name = os.path.join(FLAGS.dest_dir, '../clinical_measure.csv')
+            df = pd.DataFrame(table, index=processed_list, columns=column_names)
+            csv_name = os.path.join(FLAGS.dest_dir, 'clinical_measure.csv')
             print('  Saving clinical measures at {0} ...'.format(csv_name))
             df.to_csv(csv_name)
 
@@ -226,5 +243,6 @@ if __name__ == '__main__':
         else:
             print('Average segmentation time = {:.3f}s per frame'.format(np.mean(table_time)))
         process_time = time.time() - start_time
-        print('Evaluation took {:.3f}s for {:d} subjects ({:.3f}s per subjects).'.format(
+        print('Including image I/O, CUDA resource allocation, '
+              'it took {:.3f}s for processing {:d} subjects ({:.3f}s per subjects).'.format(
             process_time, len(data_list), process_time / len(data_list)))

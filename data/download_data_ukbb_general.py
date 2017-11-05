@@ -24,11 +24,11 @@ import dateutil.parser
 
 if __name__ == '__main__':
     # Where the data will be downloaded
-    data_root = '/vol/vipdata/data/biobank/cardiac/Application_18545/data'
+    data_root = '/vol/vipdata/data/biobank/cardiac/Application_18545/data_path'
 
     # Path to the UK Biobank utilities directory
     # The utility programmes can be downloaded at http://biobank.ctsu.ox.ac.uk/crystal/download.cgi
-    util_dir = '/vol/vipdata/data/biobank/cardiac/Application_18545/util'
+    util_dir = '/vol/vipdata/data/biobank/cardiac/Application_18545/util_path'
 
     # The authentication file (application id + password) for downloading the data for a specific
     # UK Biobank application. You will get this file from the UK Biobank website after your
