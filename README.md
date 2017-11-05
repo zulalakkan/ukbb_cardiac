@@ -33,7 +33,7 @@ python3 demo.py
 ```
 There is one parameter in the script, *CUDA_VISIBLE_DEVICES*, which controls which GPU device to use on your machine. Currently, I set it to 0, which means the first GPU on your machine.
 
-This script will download two exemplar short-axis cardiac MR images and a pre-trained network, then segment the left and right ventricles using the network, saving the segmentation results *seg_sa.nii.gz* and also saving the clinical measures in a spreadsheet *clinical_measure.csv*, including the left ventricular end-diastolic volume (LVEDV), end-systolic volume (LVESV), myocardial mass (LVM) and the right ventricular end-diastolic volume (RVEDV), end-systolic volume (RVESV). The script will also download long-axis cardiac MR images and segment the left and right atria.
+This script will download two exemplar short-axis cardiac MR images and a pre-trained network, then segment the left and right ventricles using the network, saving the segmentation results *seg_sa.nii.gz* and also saving the clinical measures in a spreadsheet *clinical_measure.csv*, including the left ventricular end-diastolic volume (LVEDV), end-systolic volume (LVESV), myocardial mass (LVM) and the right ventricular end-diastolic volume (RVEDV), end-systolic volume (RVESV). The script will also download exemplar long-axis cardiac MR images and segment the left and right atria.
 
 **Speed** The speed of image segmentation depends several factors, such as whether to use GPU or CPU, the GPU hardware, the test image size etc. In my case, if I use a Nvidia Titan K80 GPU and process short-axis cardiac MR images of 600 subjects, it takes about 9.5 seconds to segment each subject, with the image size to be 198x208x10x50 (i.e. 10 image slices and 50 time frames).
 
@@ -48,7 +48,7 @@ In my project, I use imaging data from [the UK Biobank](http://www.ukbiobank.ac.
 
 I have written the following scripts for preparing the UK Biobank cardiac imaging data:
 * convert_data_ukbb2964.py and prepare_data_ukbb2964.py, which prepare the cardiac images and manual annotation of 5,000 subjects under UK Biobank Application 2964. This is the dataset that I used for training the network.
-* download_data_ukbb_general.py, which downloads cardiac MR images and converts the image format from dicom to nifti for a general UK Biobank application. You may adapt this script to prepare your data, if they also come from the UK Biobank.
+* download_data_ukbb_general.py, which shows how to download cardiac MR images and convert the image format from dicom to nifti for a general UK Biobank application. You may adapt this script to prepare your data, if they also come from the UK Biobank.
 
 ## References
 
