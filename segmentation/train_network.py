@@ -166,6 +166,9 @@ def main(argv=None):
     for i in range(n_level):
         n_filter += [FLAGS.num_filter * pow(2, i)]
     print('Number of filters at each level =', n_filter)
+    print('Note: The connection between neurons is proportional to n_filter * n_filter. '
+          'Increasing n_filter by a factor of 2 will increase the number of parameters by a factor of 4. '
+          'So it is better to start experiments with a small n_filter and increase it later.')
 
     # Build the neural network, which outputs the logits, i.e. the unscaled values just before
     # the softmax layer, which will then normalise the logits into the probabilities.
@@ -317,7 +320,7 @@ def main(argv=None):
                     summary.value.add(tag='dice_ra', simple_value=validation_dice_ra)
                 validation_writer.add_summary(summary, iteration)
 
-                # Print the results for this epoch
+                # Print the results for this iteration
                 print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
                                                                time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
@@ -349,7 +352,7 @@ def main(argv=None):
                         validation_acc, validation_dice_la, validation_dice_ra))
                 f_log.flush()
             else:
-                # Print the results for this epoch:
+                # Print the results for this iteration
                 print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
                                                                time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
