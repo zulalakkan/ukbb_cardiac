@@ -65,7 +65,7 @@ def data_augmenter(image, label, shift, rotate, scale, intensity, flip):
     """
         Online data augmentation
         Perform affine transformation on image and label,
-        which are 4D tensor of shape (N, X, Y, C) and 3D tensor of shape (N, X, Y).
+        which are 4D tensor of shape (N, H, W, C) and 3D tensor of shape (N, H, W).
     """
     image2 = np.zeros(image.shape, dtype=np.float32)
     label2 = np.zeros(label.shape, dtype=np.int32)
