@@ -59,7 +59,8 @@ if __name__ == '__main__':
                 image_name = '{0}/{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
 
                 if not os.path.exists(image_name):
-                    print(' Image {0} does not exist. Skip.'.format(image_name))
+                    print('  Directory {0} does not contain an image with file name {1}. '
+                          'Skip.'.format(data_dir, os.path.basename(image_name)))
                     continue
 
                 # Read the image
@@ -104,6 +105,7 @@ if __name__ == '__main__':
                 seg_time = time.time() - start_seg_time
                 print('  Segmentation time = {:3f}s'.format(seg_time))
                 table_time += [seg_time]
+                processed_list += [data]
 
                 # ED frame defaults to be the first time frame.
                 # Determine ES frame according to the minimum LV volume.
@@ -150,13 +152,14 @@ if __name__ == '__main__':
                             measure['ED']['LVM'],
                             measure['ED']['RVV'], measure['ES']['RVV']]
                     table += [line]
-                    processed_list += [data]
             else:
                 # Process ED and ES time frames
                 image_ED_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ED')
                 image_ES_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ES')
                 if not os.path.exists(image_ED_name) or not os.path.exists(image_ES_name):
-                    print(' Image {0} or {1} does not exist. Skip.'.format(image_ED_name, image_ES_name))
+                    print('  Directory {0} does not contain an image with file name {1} or {2}. '
+                          'Skip.'.format(data_dir, os.path.basename(image_ED_name),
+                                          os.path.basename(image_ES_name)))
                     continue
 
                 measure = {}
@@ -199,6 +202,7 @@ if __name__ == '__main__':
                     seg_time = time.time() - start_seg_time
                     print('  Segmentation time = {:3f}s'.format(seg_time))
                     table_time += [seg_time]
+                    processed_list += [data]
 
                     # Save the segmentation
                     if FLAGS.save_seg:
@@ -228,7 +232,6 @@ if __name__ == '__main__':
                             measure['ED']['LVM'],
                             measure['ED']['RVV'], measure['ES']['RVV']]
                     table += [line]
-                    processed_list += [data]
 
         # Save the spreadsheet for the clinical measures
         if FLAGS.seq_name == 'sa' and FLAGS.clinical_measure:
@@ -245,4 +248,4 @@ if __name__ == '__main__':
         process_time = time.time() - start_time
         print('Including image I/O, CUDA resource allocation, '
               'it took {:.3f}s for processing {:d} subjects ({:.3f}s per subjects).'.format(
-            process_time, len(data_list), process_time / len(data_list)))
+            process_time, len(processed_list), process_time / len(processed_list)))

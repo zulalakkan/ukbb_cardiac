@@ -6,6 +6,8 @@
 * training fully convolutional networks for short-axis and long-axis CMR image segmentation;
 * deploying the networks to new images.
 
+**Note** This repository only contains the code, not the imaging data. To know more about how to access the UK Biobank imaging data, please go to the [UK Biobank Imaging Study](http://imaging.ukbiobank.ac.uk/) website. Researchers can [apply](http://www.ukbiobank.ac.uk/register-apply/) to use the UK Biobank data resource for health-related research in the public interest.
+
 ## Installation
 
 The toolbox is developed using [Python](https://www.python.org) programming language. Python is usually installed by default on Linux and OSX machines but may need to be installed on Windows machines. Regarding the Python version, I use Python 3. But Python 2 may also work, since I have not used any function specific for Python 3.
