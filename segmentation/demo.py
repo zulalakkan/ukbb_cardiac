@@ -51,6 +51,6 @@ if __name__ == '__main__':
         os.system('CUDA_VISIBLE_DEVICES={0} python3 deploy_network.py '
                   '--test_dir demo_image --dest_dir demo_image '
                   '--seq_name {1} --model_path trained_model/FCN_{1} '
-                  '--process_seq --clinical_measures'.format(CUDA_VISIBLE_DEVICES,
-                                                             seq_name))
+                  '--process_seq --clinical_measure'.format(CUDA_VISIBLE_DEVICES,
+                                                            seq_name))
         print('Done.')
