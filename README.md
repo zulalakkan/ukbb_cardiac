@@ -56,6 +56,6 @@ I have written the following scripts for preparing the UK Biobank cardiac imagin
 
 We would like to thank all the UK Biobank participants and staff who make the CMR imaging dataset possible and also people from Queen Mary's University London and Oxford University who performed the hard work of manual annotation. In case you find the toolbox or a certain part of it useful, please consider giving appropriate credit to it by citing one or some of the papers here, which respectively describes the segmentation method [1] and the manual annotation dataset [2]. Thanks.
 
-[1] W. Bai, et al. Human-level CMR image analysis with deep fully convolutional networks. arXiv:1710.09289. [arxiv](https://arxiv.org/abs/1710.09289)
+[1] W. Bai, et al. Automated cardiovascular magnetic resonance image analysis with fully convolutional networks. Journal of Cardiovascular Magnetic Resonance, accepted. [arxiv](https://arxiv.org/abs/1710.09289)
 
 [2] S. Petersen, et al. Reference ranges for cardiac structure and function using cardiovascular magnetic resonance (CMR) in Caucasians from the UK Biobank population cohort. Journal of Cardiovascular Magnetic Resonance, 19:18, 2017. [doi](https://doi.org/10.1186/s12968-017-0327-9)
