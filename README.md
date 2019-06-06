@@ -1,3 +1,5 @@
+# Currently updating. Please see branch v1.0 for the previous stable version.
+
 ## Overview
 
 **uk_biobank_cardiac** is a toolbox used for processing and analysing cardiovascular magnetic resonance (CMR) images from the [UK Biobank Imaging Study](http://imaging.ukbiobank.ac.uk/). It consists of several parts:
