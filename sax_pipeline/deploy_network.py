@@ -54,7 +54,7 @@ if __name__ == '__main__':
         start_time = time.time()
 
         # Process each subject subdirectory
-        data_list = sorted(os.listdir(FLAGS.test_dir))
+        data_list = sorted(os.listdir(FLAGS.test_dir))[:10]
         processed_list = []
         table_time = []
         for data in data_list:
