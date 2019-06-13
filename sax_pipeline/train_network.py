@@ -1,4 +1,4 @@
-# Copyright 2017, Wenjia Bai. All Rights Reserved.
+# Copyright 2019, Wenjia Bai. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ import random
 import numpy as np
 import nibabel as nib
 import tensorflow as tf
-from network import build_FCN, build_ResNet
-from image_utils import tf_categorical_accuracy, tf_categorical_dice
-from image_utils import crop_image, rescale_intensity, data_augmenter
+from common.network import build_FCN, build_ResNet
+from common.image_utils import tf_categorical_accuracy, tf_categorical_dice
+from common.image_utils import crop_image, rescale_intensity, data_augmenter
 
 
-""" Training parameters """
+""" Parameters """
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('image_size', 192,
                             'Image size after cropping.')
@@ -268,21 +268,6 @@ def main(argv=None):
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
-    # Create a logger
-    if not os.path.exists(FLAGS.log_dir):
-        os.makedirs(FLAGS.log_dir)
-    csv_name = os.path.join(FLAGS.log_dir, '{0}_log.csv'.format(model_name))
-    f_log = open(csv_name, 'w')
-    if FLAGS.seq_name == 'sa':
-        f_log.write('iteration,time,train_loss,train_acc,test_loss,test_acc,'
-                    'test_dice_lv,test_dice_myo,test_dice_rv\n')
-    elif FLAGS.seq_name == 'la_2ch':
-        f_log.write('iteration,time,train_loss,train_acc,test_loss,test_acc,'
-                    'test_dice_la\n')
-    elif FLAGS.seq_name == 'la_4ch':
-        f_log.write('iteration,time,train_loss,train_acc,test_loss,test_acc,'
-                    'test_dice_la,test_dice_ra\n')
-
     # Start the tensorflow session
     with tf.Session() as sess:
         print('Start training...')
@@ -382,28 +367,6 @@ def main(argv=None):
                 elif FLAGS.seq_name == 'la_4ch':
                     print('  validation Dice LA:\t\t{:.6f}'.format(validation_dice_la))
                     print('  validation Dice RA:\t\t{:.6f}'.format(validation_dice_ra))
-
-                # Log
-                if FLAGS.seq_name == 'sa':
-                    f_log.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}\n'.format(
-                        iteration, time.time() - start_time,
-                        train_loss, train_acc,
-                        validation_loss, validation_acc,
-                        validation_dice_lv, validation_dice_myo,
-                        validation_dice_rv))
-                elif FLAGS.seq_name == 'la_2ch':
-                    f_log.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}\n'.format(
-                        iteration, time.time() - start_time,
-                        train_loss, train_acc,
-                        validation_loss, validation_acc,
-                        validation_dice_la))
-                elif FLAGS.seq_name == 'la_4ch':
-                    f_log.write('{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}\n'.format(
-                        iteration, time.time() - start_time,
-                        train_loss, train_acc,
-                        validation_loss, validation_acc,
-                        validation_dice_la, validation_dice_ra))
-                f_log.flush()
             else:
                 # Print the results for this iteration
                 print('Iteration {} of {} took {:.3f}s'.format(iteration,
@@ -420,8 +383,7 @@ def main(argv=None):
                 saver.save(sess, save_path=os.path.join(model_dir, '{0}.ckpt'.format(model_name)),
                            global_step=iteration)
 
-        # Close the logger and summary writers
-        f_log.close()
+        # Close the summary writers
         train_writer.close()
         validation_writer.close()
         print('Training took {:.3f}s in total.\n'.format(time.time() - start_time))
