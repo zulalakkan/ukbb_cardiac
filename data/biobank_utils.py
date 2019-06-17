@@ -23,7 +23,8 @@
     fail in reading certain DICOM images, perhaps due to the DICOM format, which has no standard
     and vary between manufacturers and machines.
 """
-import os, glob, re, dicom, pickle, cv2
+import os, glob, re, pickle, cv2
+import pydicom as dicom
 import SimpleITK as sitk
 import numpy as np, nibabel as nib
 

@@ -17,16 +17,15 @@ import time
 import math
 import numpy as np
 import nibabel as nib
-import pandas as pd
 import tensorflow as tf
-from common.image_utils import rescale_intensity
+from ukbb_cardiac.common.image_utils import rescale_intensity
 
 
 """ Deployment parameters """
 FLAGS = tf.app.flags.FLAGS
-tf.app.flags._global_parser.add_argument('--seq_name',
-                                         choices=['sa', 'la_2ch', 'la_4ch'],
-                                         default='sa', help="Sequence name.")
+tf.app.flags.DEFINE_enum('seq_name', 'sa',
+                         ['sa', 'la_2ch', 'la_4ch'],
+                         'Sequence name.')
 tf.app.flags.DEFINE_string('test_dir', '/vol/biomedic2/wbai/tmp/github/test',
                            'Path to the test set directory, under which images '
                            'are organised in subdirectories for each subject.')

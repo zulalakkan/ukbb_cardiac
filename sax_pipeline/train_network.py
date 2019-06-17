@@ -18,13 +18,16 @@ import random
 import numpy as np
 import nibabel as nib
 import tensorflow as tf
-from common.network import build_FCN, build_ResNet
-from common.image_utils import tf_categorical_accuracy, tf_categorical_dice
-from common.image_utils import crop_image, rescale_intensity, data_augmenter
+from ukbb_cardiac.common.network import build_FCN
+from ukbb_cardiac.common.image_utils import tf_categorical_accuracy, tf_categorical_dice
+from ukbb_cardiac.common.image_utils import crop_image, rescale_intensity, data_augmenter
 
 
 """ Parameters """
 FLAGS = tf.app.flags.FLAGS
+tf.app.flags.DEFINE_enum('seq_name', 'sa',
+                         ['sa', 'la_2ch', 'la_4ch'],
+                         'Sequence name.')
 tf.app.flags.DEFINE_integer('image_size', 192,
                             'Image size after cropping.')
 tf.app.flags.DEFINE_integer('train_batch_size', 2,
@@ -39,15 +42,6 @@ tf.app.flags.DEFINE_integer('num_level', 5,
                             'Number of network levels.')
 tf.app.flags.DEFINE_float('learning_rate', 1e-3,
                           'Learning rate.')
-tf.app.flags._global_parser.add_argument('--seq_name',
-                                         choices=['sa', 'la_2ch', 'la_4ch'],
-                                         default='sa', help='Sequence name for training.')
-tf.app.flags._global_parser.add_argument('--model',
-                                         choices=['FCN', 'ResNet'],
-                                         default='FCN', help='Model name.')
-tf.app.flags._global_parser.add_argument('--optimizer',
-                                         choices=['Adam', 'SGD', 'Momentum'],
-                                         default='Adam', help='Optimizer.')
 tf.app.flags.DEFINE_string('dataset_dir',
                            '/vol/medic02/users/wbai/data/cardiac_atlas/UKBB_2964/sa',
                            'Path to the dataset directory, which is split into '
@@ -199,21 +193,10 @@ def main(argv=None):
     # Build the neural network, which outputs the logits,
     # i.e. the unscaled values just before the softmax layer,
     # which will then normalise the logits into the probabilities.
-    n_block = []
-    if FLAGS.model == 'FCN':
-        n_block = [2, 2, 3, 3, 3]
-        logits = build_FCN(image_pl, n_class, n_level=n_level,
-                           n_filter=n_filter, n_block=n_block,
-                           training=training_pl, same_dim=32, fc=64)
-    elif FLAGS.model == 'ResNet':
-        n_block = [2, 2, 3, 4, 6]
-        logits = build_ResNet(image_pl, n_class, n_level=n_level,
-                              n_filter=n_filter, n_block=n_block,
-                              training=training_pl, use_bottleneck=False,
-                              same_dim=32, fc=64)
-    else:
-        print('Error: unknown model {0}.'.format(FLAGS.model))
-        exit(0)
+    n_block = [2, 2, 3, 3, 3]
+    logits = build_FCN(image_pl, n_class, n_level=n_level,
+                       n_filter=n_filter, n_block=n_block,
+                       training=training_pl, same_dim=32, fc=64)
 
     # The softmax probability and the predicted segmentation
     prob = tf.nn.softmax(logits, name='prob')
@@ -223,8 +206,7 @@ def main(argv=None):
 
     # Loss
     label_1hot = tf.one_hot(indices=label_pl, depth=n_class)
-    label_loss = tf.nn.softmax_cross_entropy_with_logits(labels=label_1hot,
-                                                         logits=logits)
+    label_loss = tf.nn.softmax_cross_entropy_with_logits(labels=label_1hot, logits=logits)
     loss = tf.reduce_mean(label_loss)
 
     # Evaluation metrics
@@ -243,27 +225,13 @@ def main(argv=None):
     # https://www.tensorflow.org/api_docs/python/tf/layers/batch_normalization
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        if FLAGS.optimizer == 'SGD':
-            print('Using SGD optimizer.')
-            train_op = tf.train.GradientDescentOptimizer(learning_rate=lr).minimize(loss)
-        elif FLAGS.optimizer == 'Adam':
-            print('Using Adam optimizer.')
-            train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
-        elif FLAGS.optimizer == 'Momentum':
-            print('Using Momentum optimizer with Nesterov momentum.')
-            train_op = tf.train.MomentumOptimizer(learning_rate=lr,
-                                                  momentum=0.9,
-                                                  use_nesterov=True).minimize(loss)
-        else:
-            print('Error: unknown optimizer {0}.'.format(FLAGS.optimizer))
-            exit(0)
+        print('Using Adam optimizer.')
+        train_op = tf.train.AdamOptimizer(learning_rate=lr).minimize(loss)
 
     # Model name and directory
-    model_name = '{0}_{1}_level{2}_filter{3}_{4}_{5}_batch{6}_iter{7}_lr{8}'.format(
-        FLAGS.model, FLAGS.seq_name, n_level, n_filter[0],
-        ''.join([str(x) for x in n_block]),
-        FLAGS.optimizer, FLAGS.train_batch_size,
-        FLAGS.train_iteration, FLAGS.learning_rate)
+    model_name = 'FCN_{0}_level{1}_filter{2}_{3}_batch{4}_iter{5}_lr{6}'.format(
+        FLAGS.seq_name, n_level, n_filter[0], ''.join([str(x) for x in n_block]),
+        FLAGS.train_batch_size, FLAGS.train_iteration, FLAGS.learning_rate)
     model_dir = os.path.join(FLAGS.checkpoint_dir, model_name)
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
@@ -280,10 +248,8 @@ def main(argv=None):
         summary_dir = os.path.join(FLAGS.log_dir, model_name)
         if os.path.exists(summary_dir):
             os.system('rm -rf {0}'.format(summary_dir))
-        train_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'train'),
-                                             graph=sess.graph)
-        validation_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'validation'),
-                                                  graph=sess.graph)
+        train_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'train'), graph=sess.graph)
+        validation_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'validation'), graph=sess.graph)
 
         # Initialise variables
         sess.run(tf.global_variables_initializer())
@@ -298,14 +264,12 @@ def main(argv=None):
                                               FLAGS.train_batch_size,
                                               image_size=FLAGS.image_size,
                                               data_augmentation=True,
-                                              shift=10, rotate=10, scale=0.1,
-                                              intensity=0.1, flip=False)
+                                              shift=0, rotate=10, scale=0.2,
+                                              intensity=0, flip=False)
 
             # Stochastic optimisation using this batch
             _, train_loss, train_acc = sess.run([train_op, loss, accuracy],
-                                                {image_pl: images,
-                                                 label_pl: labels,
-                                                 training_pl: True})
+                                                {image_pl: images, label_pl: labels, training_pl: True})
 
             summary = tf.Summary()
             summary.value.add(tag='loss', simple_value=train_loss)
@@ -323,18 +287,15 @@ def main(argv=None):
                 if FLAGS.seq_name == 'sa':
                     validation_loss, validation_acc, validation_dice_lv, validation_dice_myo, validation_dice_rv = \
                         sess.run([loss, accuracy, dice_lv, dice_myo, dice_rv],
-                                 {image_pl: images, label_pl: labels,
-                                  training_pl: False})
+                                 {image_pl: images, label_pl: labels, training_pl: False})
                 elif FLAGS.seq_name == 'la_2ch':
                     validation_loss, validation_acc, validation_dice_la = \
                         sess.run([loss, accuracy, dice_la],
-                                 {image_pl: images, label_pl: labels,
-                                  training_pl: False})
+                                 {image_pl: images, label_pl: labels, training_pl: False})
                 elif FLAGS.seq_name == 'la_4ch':
                     validation_loss, validation_acc, validation_dice_la, validation_dice_ra = \
                         sess.run([loss, accuracy, dice_la, dice_ra],
-                                 {image_pl: images, label_pl: labels,
-                                  training_pl: False})
+                                 {image_pl: images, label_pl: labels, training_pl: False})
 
                 summary = tf.Summary()
                 summary.value.add(tag='loss', simple_value=validation_loss)
