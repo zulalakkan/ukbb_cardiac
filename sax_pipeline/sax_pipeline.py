@@ -14,13 +14,17 @@
 # ==============================================================================
 import os
 
+# # Deploy the segmentation network
+# os.system('CUDA_VISIBLE_DEVICES=0 python3 deploy_network.py '
+#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+#           '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa')
+#
+# # Evaluate ventricular volumes
+# os.system('python3 eval_ventricular_volume.py '
+#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+#           '--output_csv eval_vent_vol.csv')
 
-# Deploy the segmentation network
-os.system('CUDA_VISIBLE_DEVICES=0 python3 deploy_network.py --test_dir /vol/vipdata/data/biobank/cardiac/Application_18545/data --dest_dir /vol/bitbucket/wbai/own_work/tmp_output --model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa')
-
-# Evaluate volumes
+# Evaluate wall thickness
 
 
-# evaluate wall thickness
-
-# evaluate strains
+# Evaluate strain

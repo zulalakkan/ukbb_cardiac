@@ -26,12 +26,9 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_enum('seq_name', 'sa',
                          ['sa', 'la_2ch', 'la_4ch'],
                          'Sequence name.')
-tf.app.flags.DEFINE_string('test_dir', '/vol/biomedic2/wbai/tmp/github/test',
-                           'Path to the test set directory, under which images '
+tf.app.flags.DEFINE_string('data_dir', '/vol/bitbucket/wbai/own_work/ukbb_cardiac_demo',
+                           'Path to the data set directory, under which images '
                            'are organised in subdirectories for each subject.')
-tf.app.flags.DEFINE_string('dest_dir', '/vol/biomedic2/wbai/tmp/github/output',
-                           'Path to the destination directory, where the '
-                           'segmentations will be saved.')
 tf.app.flags.DEFINE_string('model_path',
                            '/vol/biomedic2/wbai/tmp/github/model/FCN_sa.ckpt-50000',
                            'Path to the saved trained model.')
@@ -49,16 +46,16 @@ if __name__ == '__main__':
         saver = tf.train.import_meta_graph('{0}.meta'.format(FLAGS.model_path))
         saver.restore(sess, '{0}'.format(FLAGS.model_path))
 
-        print('Start evaluating on the test set ...')
+        print('Start deployment on the data set ...')
         start_time = time.time()
 
         # Process each subject subdirectory
-        data_list = sorted(os.listdir(FLAGS.test_dir))[:10]
+        data_list = sorted(os.listdir(FLAGS.data_dir))
         processed_list = []
         table_time = []
         for data in data_list:
             print(data)
-            data_dir = os.path.join(FLAGS.test_dir, data)
+            data_dir = os.path.join(FLAGS.data_dir, data)
 
             if FLAGS.process_seq:
                 # Process the temporal sequence
@@ -66,8 +63,7 @@ if __name__ == '__main__':
 
                 if not os.path.exists(image_name):
                     print('  Directory {0} does not contain an image with file '
-                          'name {1}. Skip.'.format(data_dir,
-                                                   os.path.basename(image_name)))
+                          'name {1}. Skip.'.format(data_dir, os.path.basename(image_name)))
                     continue
 
                 # Read the image
@@ -92,9 +88,7 @@ if __name__ == '__main__':
                 X2, Y2 = int(math.ceil(X / 16.0)) * 16, int(math.ceil(Y / 16.0)) * 16
                 x_pre, y_pre = int((X2 - X) / 2), int((Y2 - Y) / 2)
                 x_post, y_post = (X2 - X) - x_pre, (Y2 - Y) - y_pre
-                image = np.pad(image,
-                               ((x_pre, x_post), (y_pre, y_post), (0, 0), (0, 0)),
-                               'constant')
+                image = np.pad(image, ((x_pre, x_post), (y_pre, y_post), (0, 0), (0, 0)), 'constant')
 
                 # Process each time frame
                 for t in range(T):
@@ -105,8 +99,7 @@ if __name__ == '__main__':
 
                     # Evaluate the network
                     prob_fr, pred_fr = sess.run(['prob:0', 'pred:0'],
-                                                feed_dict={'image:0': image_fr,
-                                                           'training:0': False})
+                                                feed_dict={'image:0': image_fr, 'training:0': False})
 
                     # Transpose and crop segmentation to recover the original size
                     pred_fr = np.transpose(pred_fr, axes=(1, 2, 0))
@@ -131,36 +124,20 @@ if __name__ == '__main__':
                 # Save the segmentation
                 if FLAGS.save_seg:
                     print('  Saving segmentation ...')
-                    dest_data_dir = os.path.join(FLAGS.dest_dir, data)
-                    if not os.path.exists(dest_data_dir):
-                        os.makedirs(dest_data_dir)
-
                     nim2 = nib.Nifti1Image(pred, nim.affine)
                     nim2.header['pixdim'] = nim.header['pixdim']
-                    nib.save(nim2, '{0}/seg_{1}.nii.gz'.format(dest_data_dir,
-                                                               FLAGS.seq_name))
+                    nib.save(nim2, '{0}/seg_{1}.nii.gz'.format(data_dir, FLAGS.seq_name))
 
                     for fr in ['ED', 'ES']:
-                        nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]],
-                                                 nim.affine),
-                                 '{0}/{1}_{2}.nii.gz'.format(dest_data_dir,
-                                                             FLAGS.seq_name,
-                                                             fr))
-                        nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]],
-                                                 nim.affine),
-                                 '{0}/seg_{1}_{2}.nii.gz'.format(dest_data_dir,
-                                                                 FLAGS.seq_name,
-                                                                 fr))
+                        nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]], nim.affine),
+                                 '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
+                        nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine),
+                                 '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
             else:
                 # Process ED and ES time frames
-                image_ED_name = '{0}/{1}_{2}.nii.gz'.format(data_dir,
-                                                            FLAGS.seq_name,
-                                                            'ED')
-                image_ES_name = '{0}/{1}_{2}.nii.gz'.format(data_dir,
-                                                            FLAGS.seq_name,
-                                                            'ES')
-                if not os.path.exists(image_ED_name) \
-                        or not os.path.exists(image_ES_name):
+                image_ED_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ED')
+                image_ES_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ES')
+                if not os.path.exists(image_ED_name) or not os.path.exists(image_ES_name):
                     print('  Directory {0} does not contain an image with '
                           'file name {1} or {2}. Skip.'.format(data_dir,
                                                                os.path.basename(image_ED_name),
@@ -192,9 +169,7 @@ if __name__ == '__main__':
                     X2, Y2 = int(math.ceil(X / 16.0)) * 16, int(math.ceil(Y / 16.0)) * 16
                     x_pre, y_pre = int((X2 - X) / 2), int((Y2 - Y) / 2)
                     x_post, y_post = (X2 - X) - x_pre, (Y2 - Y) - y_pre
-                    image = np.pad(image,
-                                   ((x_pre, x_post), (y_pre, y_post), (0, 0)),
-                                   'constant')
+                    image = np.pad(image, ((x_pre, x_post), (y_pre, y_post), (0, 0)), 'constant')
 
                     # Transpose the shape to NXYC
                     image = np.transpose(image, axes=(2, 0, 1)).astype(np.float32)
@@ -202,8 +177,7 @@ if __name__ == '__main__':
 
                     # Evaluate the network
                     prob, pred = sess.run(['prob:0', 'pred:0'],
-                                          feed_dict={'image:0': image,
-                                                     'training:0': False})
+                                          feed_dict={'image:0': image, 'training:0': False})
 
                     # Transpose and crop the segmentation to recover the original size
                     pred = np.transpose(pred, axes=(1, 2, 0))
@@ -217,26 +191,16 @@ if __name__ == '__main__':
                     # Save the segmentation
                     if FLAGS.save_seg:
                         print('  Saving segmentation ...')
-                        dest_data_dir = os.path.join(FLAGS.dest_dir, data)
-                        if not os.path.exists(dest_data_dir):
-                            os.makedirs(dest_data_dir)
-
                         nim2 = nib.Nifti1Image(pred, nim.affine)
                         nim2.header['pixdim'] = nim.header['pixdim']
-                        nib.save(nim2,
-                                 '{0}/seg_{1}_{2}.nii.gz'.format(dest_data_dir,
-                                                                 FLAGS.seq_name,
-                                                                 fr))
+                        nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
 
         if FLAGS.process_seq:
-            print('Average segmentation time = {:.3f}s per sequence'.format(
-                np.mean(table_time)))
+            print('Average segmentation time = {:.3f}s per sequence'.format(np.mean(table_time)))
         else:
-            print('Average segmentation time = {:.3f}s per frame'.format(
-                np.mean(table_time)))
+            print('Average segmentation time = {:.3f}s per frame'.format(np.mean(table_time)))
         process_time = time.time() - start_time
         print('Including image I/O, CUDA resource allocation, '
               'it took {:.3f}s for processing {:d} subjects '
-              '({:.3f}s per subjects).'.format(process_time,
-                                               len(processed_list),
+              '({:.3f}s per subjects).'.format(process_time, len(processed_list),
                                                process_time / len(processed_list)))

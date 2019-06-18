@@ -132,12 +132,8 @@ def main(argv=None):
             # Check the existence of the image and label map at ED and ES time frames
             # and add their file names to the list
             for fr in ['ED', 'ES']:
-                image_name = '{0}/{1}_{2}.nii.gz'.format(data_dir,
-                                                         FLAGS.seq_name,
-                                                         fr)
-                label_name = '{0}/label_{1}_{2}.nii.gz'.format(data_dir,
-                                                               FLAGS.seq_name,
-                                                               fr)
+                image_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                label_name = '{0}/label_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
                 if os.path.exists(image_name) and os.path.exists(label_name):
                     data_list[k] += [[image_name, label_name]]
 
@@ -312,8 +308,7 @@ def main(argv=None):
                 validation_writer.add_summary(summary, iteration)
 
                 # Print the results for this iteration
-                print('Iteration {} of {} took {:.3f}s'.format(iteration,
-                                                               FLAGS.train_iteration,
+                print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
                                                                time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
                 print('  training accuracy:\t\t{:.2f}%'.format(train_acc * 100))
@@ -330,8 +325,7 @@ def main(argv=None):
                     print('  validation Dice RA:\t\t{:.6f}'.format(validation_dice_ra))
             else:
                 # Print the results for this iteration
-                print('Iteration {} of {} took {:.3f}s'.format(iteration,
-                                                               FLAGS.train_iteration,
+                print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
                                                                time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
                 print('  training accuracy:\t\t{:.2f}%'.format(train_acc * 100))
