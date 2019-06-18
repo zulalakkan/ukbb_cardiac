@@ -25,6 +25,8 @@ import os
 #           '--output_csv eval_vent_vol.csv')
 
 # Evaluate wall thickness
-
+# os.system('python3 eval_wall_thickness.py '
+#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+#           '--output_csv eval_wall_thick.csv')
 
 # Evaluate strain

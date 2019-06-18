@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from scipy import ndimage
+import scipy.ndimage.measurements as measure
 
 
 def tf_categorical_accuracy(pred, truth):
@@ -162,3 +163,28 @@ def distance_metric(seg_A, seg_B, dx):
     mean_md = np.mean(table_md) if table_md else None
     mean_hd = np.mean(table_hd) if table_hd else None
     return mean_md, mean_hd
+
+
+def get_largest_cc(binary):
+    """ Get the largest connected component in the foreground. """
+    cc, n_cc = measure.label(binary)
+    max_n = -1
+    max_area = 0
+    for n in range(1, n_cc + 1):
+        area = np.sum(cc == n)
+        if area > max_area:
+            max_area = area
+            max_n = n
+    largest_cc = (cc == max_n)
+    return largest_cc
+
+
+def remove_small_cc(binary, thres=10):
+    """ Remove small connected component in the foreground. """
+    cc, n_cc = measure.label(binary)
+    binary2 = np.copy(binary)
+    for n in range(1, n_cc + 1):
+        area = np.sum(cc == n)
+        if area < thres:
+            binary2[cc == n] = 0
+    return binary2
