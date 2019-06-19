@@ -852,20 +852,6 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         if not os.path.exists('{0}/myo_contour_ED_z{1:02d}.vtk'.format(output_dir, z)):
             continue
 
-        # Mask image, which is dilated from the epicardium
-        # Use the same mask across the time frames, so that the resulting
-        # free form deformation (FFD) will have a consistent lattice.
-        nim = nib.load('{0}/seg_sa_crop_z{1:02d}.nii.gz'.format(output_dir, z))
-        seg = nim.get_data()
-        X, Y = seg.shape[:2]
-        mask = np.zeros((X, Y), dtype=np.uint8)
-        for fr in range(T):
-            mask_fr = ((seg[:, :, 0, fr] == label['LV']) | (seg[:, :, 0, fr] == label['Myo'])).astype(np.uint8)
-            mask_fr = cv2.dilate(mask_fr, np.ones((3, 3), dtype=np.uint8), iterations=5)
-            mask = (mask | mask_fr)
-        nim_mask = nib.Nifti1Image(mask, nim.affine)
-        nib.save(nim_mask, '{0}/seg_sa_crop_mask_z{1:02d}.nii.gz'.format(output_dir, z))
-
         # Split the cine sequence for this slice
         split_sequence('{0}/sa_crop_z{1:02d}.nii.gz'.format(output_dir, z),
                        '{0}/sa_crop_z{1:02d}_fr'.format(output_dir, z))
@@ -874,20 +860,8 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         for fr in range(1, T):
             target_fr = fr - 1
             source_fr = fr
-
-            # Apply the mask to the target image so that the image registration
-            # focuses on the myocardium, which is the region for strain analysis.
-            image_apply_mask('{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr),
-                             '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr),
-                             mask)
-            image_apply_mask('{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr),
-                             '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr),
-                             mask)
-
-            target = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
-            source = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
-            # target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
-            # source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
+            target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
+            source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
             par = '{0}/ffd_cine_2d_motion.cfg'.format(par_dir)
             dof = '{0}/ffd_z{1:02d}_pair_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, z, target_fr, source_fr)
             os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
@@ -907,20 +881,8 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         for fr in range(T - 1, 0, -1):
             target_fr = (fr + 1) % T
             source_fr = fr
-
-            # Apply the mask to the target image so that the image registration
-            # focuses on the myocardium, which is the region for strain analysis.
-            image_apply_mask('{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr),
-                             '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr),
-                             mask)
-            image_apply_mask('{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr),
-                             '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr),
-                             mask)
-
-            target = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
-            source = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
-            # target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
-            # source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
+            target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
+            source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
             par = '{0}/ffd_cine_2d_motion.cfg'.format(par_dir)
             dof = '{0}/ffd_z{1:02d}_pair_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, z,
                                                                            target_fr, source_fr)

@@ -22,11 +22,15 @@ import os
 # # Evaluate ventricular volumes
 # os.system('python3 eval_ventricular_volume.py '
 #           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--output_csv eval_vent_vol.csv')
+#           '--output_csv table_ventricular_volume.csv')
 
 # Evaluate wall thickness
 # os.system('python3 eval_wall_thickness.py '
 #           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--output_csv eval_wall_thick.csv')
+#           '--output_csv table_wall_thickness.csv')
 
-# Evaluate strain
+# Evaluate strain values
+os.system('python3 eval_strain_sax.py '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--par_dir /vol/biomedic2/wbai/git/ukbb_cardiac/par '
+          '--output_csv table_strain_sax.csv')

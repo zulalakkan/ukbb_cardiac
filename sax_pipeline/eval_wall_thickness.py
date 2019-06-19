@@ -45,10 +45,11 @@ if __name__ == '__main__':
                                 '{0}/wall_thickness_ED'.format(data_dir))
 
         # Record data
-        df = pd.read_csv('{0}/wall_thickness_ED.csv'.format(data_dir), index_col=0)
-        line = df['Thickness'].values
-        table += [line]
-        processed_list += [data]
+        if os.path.exists('{0}/wall_thickness_ED.csv'.format(data_dir)):
+            df = pd.read_csv('{0}/wall_thickness_ED.csv'.format(data_dir), index_col=0)
+            line = df['Thickness'].values
+            table += [line]
+            processed_list += [data]
 
     # Save wall thickness for all the subjects
     df = pd.DataFrame(table, index=processed_list,
