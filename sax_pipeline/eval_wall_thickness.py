@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # Copyright 2019, Wenjia Bai. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
@@ -15,10 +14,9 @@
 # ============================================================================
 import os
 import argparse
-import numpy as np
 import pandas as pd
-import nibabel as nib
 from ukbb_cardiac.common.cardiac_utils import *
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

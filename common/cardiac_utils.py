@@ -5,18 +5,10 @@ import nibabel as nib
 import cv2
 import vtk
 import pandas as pd
+import matplotlib.pyplot as plt
 from vtk.util import numpy_support
 from scipy import interpolate
 from ukbb_cardiac.common.image_utils import *
-
-
-def circular_convolve(x, h):
-    """ Circular convolution. """
-    r = int(math.ceil((len(h) - 1) / 2.0))
-    x2 = np.concatenate((x[-r:], x, x[:r]))
-    y2 = np.convolve(x2, h, mode='same')
-    y = y2[r:-r]
-    return y
 
 
 def approximate_contour(contour, factor=4, smooth=0.05, periodic=False):
@@ -828,10 +820,11 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
     # Crop the image to save computation for image registration
     # Focus on the left ventricle so that motion tracking is less affected by
     # the movement of RV and LV outflow tract
-    os.system('padding {0}/seg_sa_ED.nii.gz {0}/seg_sa_ED.nii.gz {1}/seg_sa_lv_ED.nii.gz '
-              '3 0'.format(data_dir, output_dir))
-    os.system('auto_crop_image {0}/seg_sa_lv_ED.nii.gz {0}/seg_sa_lv_crop_ED.nii.gz '
-              '-reserve 20'.format(output_dir))
+    padding('{0}/seg_sa_ED.nii.gz'.format(data_dir),
+            '{0}/seg_sa_ED.nii.gz'.format(data_dir),
+            '{0}/seg_sa_lv_ED.nii.gz'.format(output_dir), 3, 0)
+    auto_crop_image('{0}/seg_sa_lv_ED.nii.gz'.format(output_dir),
+                    '{0}/seg_sa_lv_crop_ED.nii.gz'.format(output_dir), 20)
     os.system('mirtk transform-image {0}/sa.nii.gz {1}/sa_crop.nii.gz '
               '-target {1}/seg_sa_lv_crop_ED.nii.gz'.format(data_dir, output_dir))
     os.system('mirtk transform-image {0}/seg_sa.nii.gz {1}/seg_sa_crop.nii.gz '
@@ -843,10 +836,8 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
                                three_slices=True)
 
     # Split the volume into slices
-    split_volume('{0}/sa_crop.nii.gz'.format(output_dir),
-                 '{0}/sa_crop_z'.format(output_dir))
-    split_volume('{0}/seg_sa_crop.nii.gz'.format(output_dir),
-                 '{0}/seg_sa_crop_z'.format(output_dir))
+    split_volume('{0}/sa_crop.nii.gz'.format(output_dir), '{0}/sa_crop_z'.format(output_dir))
+    split_volume('{0}/seg_sa_crop.nii.gz'.format(output_dir), '{0}/seg_sa_crop_z'.format(output_dir))
 
     # Label class in the segmentation
     label = {'BG': 0, 'LV': 1, 'Myo': 2, 'RV': 3}
@@ -895,6 +886,8 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
 
             target = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
             source = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
+            # target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
+            # source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
             par = '{0}/ffd_cine_2d_motion.cfg'.format(par_dir)
             dof = '{0}/ffd_z{1:02d}_pair_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, z, target_fr, source_fr)
             os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
@@ -926,6 +919,8 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
 
             target = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
             source = '{0}/sa_crop_mask_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
+            # target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
+            # source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
             par = '{0}/ffd_cine_2d_motion.cfg'.format(par_dir)
             dof = '{0}/ffd_z{1:02d}_pair_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, z,
                                                                            target_fr, source_fr)
@@ -944,9 +939,9 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
             os.system('mirtk compose-dofs {0} {1} -approximate'.format(dofs, dof_out))
 
         # Average the forward and backward transformations
-        os.system('dofcreate {0}/ffd_z{1:02d}_forward_00_to_00.dof.gz'.format(output_dir, z))
-        os.system('dofcreate {0}/ffd_z{1:02d}_backward_00_to_00.dof.gz'.format(output_dir, z))
-        os.system('dofcreate {0}/ffd_z{1:02d}_00_to_00.dof.gz'.format(output_dir, z))
+        os.system('mirtk init-dof {0}/ffd_z{1:02d}_forward_00_to_00.dof.gz'.format(output_dir, z))
+        os.system('mirtk init-dof {0}/ffd_z{1:02d}_backward_00_to_00.dof.gz'.format(output_dir, z))
+        os.system('mirtk init-dof {0}/ffd_z{1:02d}_00_to_00.dof.gz'.format(output_dir, z))
         for fr in range(1, T):
             dof_forward = '{0}/ffd_z{1:02d}_forward_00_to_{2:02d}.dof.gz'.format(output_dir, z, fr)
             weight_forward = float(T - fr) / T
@@ -959,12 +954,6 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
 
         # Transform the contours
         for fr in range(0, T):
-            # Old code (leave from comparison), which calculates the strain
-            # tensor from the Jacobian matrix
-            # os.system('calculate_strain {0}/sa_crop.nii.gz '
-            #           '{0}/myo_contour_ED_z{1:02d}.vtk '
-            #           '{0}/ffd_z{1:02d}_00_to_{2:02d}.dof.gz '
-            #           '{0}/strain_contour_z{1:02d}_fr{2:02d}.vtk'.format(output_dir, z, fr))
             os.system('mirtk transform-points {0}/myo_contour_ED_z{1:02d}.vtk '
                       '{0}/myo_contour_z{1:02d}_fr{2:02d}.vtk '
                       '-dofin {0}/ffd_z{1:02d}_00_to_{2:02d}.dof.gz'.format(output_dir, z, fr))
@@ -1057,51 +1046,6 @@ def remove_mitral_valve_points(endo_contour, epi_contour, mitral_plane):
             end_i = i
             break
     epi_contour = epi_contour[:end_i]
-
-    return endo_contour, epi_contour
-
-
-def remove_mitral_valve_points2(endo_contour, epi_contour, myo):
-    """ Remove the mitral valve points from the contours and
-        start the contours from the point next to the mitral valve plane.
-        So connecting the lines will be easier in the next step.
-        """
-    myo_dilate = cv2.dilate(myo, np.ones((3, 3), dtype=np.uint8), iterations=1)
-
-    N = endo_contour.shape[0]
-    for i in range(N):
-        y, x = endo_contour[i]
-        prev_y, prev_x = endo_contour[(i - 1) % N]
-        if myo_dilate[x, y] and not myo_dilate[prev_x, prev_y]:
-            start_i = i
-            break
-    endo_contour = np.concatenate((endo_contour[start_i:], endo_contour[:start_i]))
-
-    N = endo_contour.shape[0]
-    for i in range(N):
-        y, x = endo_contour[i]
-        if not myo_dilate[x, y]:
-            end_i = i
-            break
-    endo_contour = endo_contour[:end_i]
-
-    N = epi_contour.shape[0]
-    for i in range(N):
-        y, x = epi_contour[i]
-        y2, x2 = epi_contour[(i - 1) % N]
-        if myo[x, y] and not myo[x2, y2]:
-            start_i = i
-            break
-    epi_contour = np.concatenate((epi_contour[start_i:], epi_contour[:start_i]))
-
-    N = epi_contour.shape[0]
-    for i in range(N):
-        y, x = epi_contour[i]
-        if not myo[x, y]:
-            end_i = i
-            break
-    epi_contour = epi_contour[:end_i]
-
     return endo_contour, epi_contour
 
 
@@ -1173,7 +1117,6 @@ def determine_la_aha_part(seg_la, affine_la, affine_sa):
 
     for la_idx in range(lv_idx_max, lv_myo_idx_max + 1):
         mid_line[la_idx] = mid_line[lv_idx_max]
-
     return part_z, mid_line
 
 
@@ -1641,503 +1584,6 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         print(np.mean(dice_lv_myo, axis=0))
         df_dice = pd.DataFrame(dice_lv_myo)
         df_dice.to_csv('{0}/dice_cine_la_4ch_warp_ffd.csv'.format(output_dir), index=None, header=None)
-
-
-def extract_short_axis_slice_according_to_tag(sa_name, tag_name, output_name):
-    """ Extract the short-axis slice which corresponds to the tagged image. """
-    nim_sa = nib.load(sa_name)
-    image_sa = nim_sa.get_data()
-    affine_sa = nim_sa.affine
-
-    nim_tag = nib.load(tag_name)
-    affine_tag = nim_tag.affine
-    X, Y, Z = nim_tag.header['dim'][1:4]
-    if Z >= 2:
-        print('Error: the tagged image has more than one slice!')
-        exit(0)
-
-    z = np.dot(np.linalg.inv(affine_sa),
-               np.dot(affine_tag, np.array([X / 2, Y / 2, 0, 1])))[2]
-    z = int(round(z))
-    slice_sa = image_sa[:, :, z]
-    slice_sa = np.expand_dims(slice_sa, axis=-1)
-
-    affine_slice = np.copy(affine_sa)
-    affine_slice[:3, 3] += affine_sa[:3, 2] * z
-    nib.save(nib.Nifti1Image(slice_sa, affine_slice), output_name)
-
-
-def assign_aha_segment_id_from_template(map_name, template_name, transform_name, map_in_temp_name):
-    """ Assign the AHA segment ID to each point according to
-        the template AHA model.
-        """
-    # First, transform the subject mesh to the template space so we can relate
-    # each point to its closest counterpart on the template mesh
-    os.system('mirtk transform-points {0} {1} -dofin {2} '
-              '-ascii'.format(map_name, map_in_temp_name, transform_name))
-
-    # Read the maps
-    reader = vtk.vtkPolyDataReader()
-    reader.SetFileName(map_name)
-    reader.Update()
-    poly = reader.GetOutput()
-    points = poly.GetPoints()
-
-    reader2 = vtk.vtkPolyDataReader()
-    reader2.SetFileName(map_in_temp_name)
-    reader2.Update()
-    poly_in_temp = reader2.GetOutput()
-    points_in_temp = poly_in_temp.GetPoints()
-
-    reader3 = vtk.vtkPolyDataReader()
-    reader3.SetFileName(template_name)
-    reader3.Update()
-    template_poly = reader3.GetOutput()
-    template_points = template_poly.GetPoints()
-
-    # Get the AHA segment ID from the template mesh
-    # The AHA 17-segment model can be referred to this paper:
-    #     Cerqueira et al. Standardized Myocardial Segmentation and Nomenclature
-    #     for Tomographic Imaging of the Heart. Circulation 2002.
-    template_aha = numpy_support.vtk_to_numpy(template_poly.GetPointData().GetArray('Segment ID'))
-
-    # Remove Segment 17 which represents the myocardium cap,
-    # which is normally not covered by 2D cine CMR.
-    template_points_wo_17 = vtk.vtkPoints()
-    template_aha_wo_17 = []
-    for i in range(template_points.GetNumberOfPoints()):
-        p = template_points.GetPoint(i)
-        if template_aha[i] != 17:
-            template_points_wo_17.InsertNextPoint(p)
-            template_aha_wo_17 += [template_aha[i]]
-    template_poly_wo_17 = vtk.vtkPolyData()
-    template_poly_wo_17.SetPoints(template_points_wo_17)
-    template_aha_wo_17 = np.array(template_aha_wo_17)
-
-    # Point locator for the template mesh
-    locator = vtk.vtkPointLocator()
-    locator.SetDataSet(template_poly_wo_17)
-
-    # For each point on the subject mesh, determine its AHA segment ID
-    n_points = points.GetNumberOfPoints()
-    aha_array = vtk.vtkIntArray()
-    aha_array.SetName('Segment ID')
-    aha_array.SetNumberOfTuples(n_points)
-
-    for i in range(n_points):
-        # Each point on the subject mesh
-        p = points_in_temp.GetPoint(i)
-
-        # Find the closest point on the template mesh
-        j = locator.FindClosestPoint(p)
-
-        # Get the template point AHA segment ID
-        aha_array.SetTuple1(i, template_aha_wo_17[j])
-
-    # Save the subject mesh with the additional arrays
-    poly.GetPointData().AddArray(aha_array)
-    writer = vtk.vtkPolyDataWriter()
-    writer.SetFileName(map_name)
-    writer.SetInputData(poly)
-    writer.Write()
-
-    poly_in_temp.GetPointData().AddArray(aha_array)
-    writer = vtk.vtkPolyDataWriter()
-    writer.SetFileName(map_in_temp_name)
-    writer.SetInputData(poly_in_temp)
-    writer.Write()
-
-
-def cine_3d_motion_and_strain_analysis(data_dir, par_dir, output_dir):
-    """ Perform motion tracking and strain analysis for cine MR images. """
-    # Crop the image to save computation for image registration
-    os.system('auto_crop_image {0}/seg_sa_ED.nii.gz {1}/seg_sa_crop_ED.nii.gz '
-              '-reserve 20'.format(data_dir, output_dir))
-    os.system('mirtk transform-image {0}/sa.nii.gz {1}/sa_crop.nii.gz '
-              '-target {1}/seg_sa_crop_ED.nii.gz'.format(data_dir, output_dir))
-
-    # Split the cine sequence
-    split_sequence('{0}/sa_crop.nii.gz'.format(output_dir), '{0}/sa_crop_fr'.format(output_dir))
-
-    # Inter-frame motion estimation
-    nim = nib.load('{0}/sa_crop.nii.gz'.format(output_dir))
-    T = nim.header['dim'][4]
-    for fr in range(1, T):
-        target = '{0}/sa_crop_fr{1:02d}.nii.gz'.format(output_dir, fr - 1)
-        source = '{0}/sa_crop_fr{1:02d}.nii.gz'.format(output_dir, fr)
-        par = '{0}/ffd_cine_motion.cfg'.format(par_dir)
-        dof = '{0}/ffd_{1:02d}_to_{2:02d}.dof.gz'.format(output_dir, fr - 1, fr)
-        os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
-
-    # Compose inter-frame transformation fields
-    os.system('dofcreate {0}/ffd_00_to_00.dof.gz'.format(output_dir))
-    for fr in range(2, T):
-        dofs = ''
-        for k in range(1, fr + 1):
-            dof = '{0}/ffd_{1:02d}_to_{2:02d}.dof.gz'.format(output_dir, k - 1, k)
-            dofs += dof + ' '
-        dof_out = '{0}/ffd_00_to_{1:02d}.dof.gz'.format(output_dir, fr)
-        os.system('mirtk compose-dofs {0} {1}'.format(dofs, dof_out))
-
-    # Refine motion fields
-    # Composition of inter-frame motion fields can lead to accumulative errors.
-    # Due to the accummulative error, the strain does not return to zero at the
-    # end of a cardiac cycle. Therefore, we refine the motion fields by
-    # re-registering the n-th frame with the ED frame.
-    os.system('dofcreate {0}/ffd_refine_00_to_00.dof.gz'.format(output_dir))
-    os.system('cp {0}/ffd_00_to_01.dof.gz {0}/ffd_refine_00_to_01.dof.gz'.format(motion_dir))
-    for fr in range(2, T):
-        target = '{0}/sa_crop_fr00.nii.gz'.format(motion_dir)
-        source = '{0}/sa_crop_fr{1:02d}.nii.gz'.format(motion_dir, fr)
-        par = '{0}/ffd_cine_refine.cfg'.format(par_dir)
-        dofin = '{0}/ffd_00_to_{1:02d}.dof.gz'.format(motion_dir, fr)
-        dof = '{0}/ffd_refine_00_to_{1:02d}.dof.gz'.format(motion_dir, fr)
-        os.system('mirtk register {0} {1} -parin {2} -dofin {3} -dofout {4}'.format(
-            target, source, par, dofin, dof))
-
-    # Extract the myocardial contour
-    extract_myocardial_contour('{0}/seg_sa_ED.nii.gz'.format(data_dir),
-                               '{0}/myo_contour_ED.vtk'.format(output_dir))
-
-    # Transform the contours and calculate the strain
-    for fr in range(0, T):
-        os.system('calculate_strain {0}/sa_crop_fr00.nii.gz '
-                  '{0}/myo_contour_ED.vtk '
-                  '{0}/ffd_refine_00_to_{1:02d}.dof.gz '
-                  '{0}/strain_contour_fr{1:02d}.vtk'.format(output_dir, fr))
-
-    # Transform the segmentation and evaluate the Dice metric
-    eval_dice = False
-    if eval_dice:
-        os.system('mirtk transform-image {0}/seg_sa.nii.gz {1}/seg_sa_crop.nii.gz '
-                  '-target {1}/seg_sa_crop_ED.nii.gz'.format(data_dir, output_dir))
-        split_sequence('{0}/seg_sa_crop.nii.gz'.format(output_dir),
-                       '{0}/seg_sa_crop_fr'.format(output_dir))
-
-        dice_lv_myo = []
-        image_names = ''
-        for fr in range(0, T):
-            os.system('mirtk transform-image {0}/seg_sa_crop_fr{1:02d}.nii.gz '
-                      '{0}/seg_sa_crop_warp_ffd_fr{1:02d}.nii.gz '
-                      '-dofin {0}/ffd_refine_00_to_{1:02d}.dof.gz '
-                      '-target {0}/seg_sa_crop_fr00.nii.gz'.format(output_dir, fr))
-            image_A = nib.load('{0}/seg_sa_crop_fr00.nii.gz'.format(output_dir)).get_data()
-            image_B = nib.load('{0}/seg_sa_crop_warp_ffd_fr{1:02d}.nii.gz'.format(output_dir, fr)).get_data()
-            dice_lv_myo += [[np_categorical_dice(image_A, image_B, 1),
-                             np_categorical_dice(image_A, image_B, 2)]]
-            image_names += ' {0}/seg_sa_crop_warp_ffd_fr{1:02d}.nii.gz'.format(output_dir, fr)
-        print(np.mean(dice_lv_myo, axis=0))
-        df_dice = pd.DataFrame(dice_lv_myo)
-        df_dice.to_csv('{0}/dice_cine_warp_ffd.csv'.format(output_dir), index=None, header=None)
-
-        combine_name = '{0}/seg_sa_crop_warp_ffd.nii.gz'.format(output_dir)
-        os.system('makesequence {0} {1}'.format(image_names, combine_name))
-
-
-def tag_2d_motion_and_strain_analysis(data_dir, par_dir, output_dir):
-    """ Perform motion tracking and strain analysis for tagged MR images. """
-    # Determine the order of the tagged image (basal -> mid -> apical)
-    # which means along the negative direction of z-axis.
-    i_loc = []
-    for i in [1, 2, 3]:
-        nim = nib.load('{0}/tag_{1}.nii.gz'.format(data_dir, i))
-        i_loc += [(i, nim.affine[2, 3])]
-    sorted_i_loc = sorted(i_loc, key=lambda x: -x[1])
-    idx = [x[0] for x in sorted_i_loc]
-
-    # A dictionary which maps the index to its part
-    part = {idx[0]: 'basal',
-            idx[1]: 'mid',
-            idx[2]: 'apical'}
-
-    dice_lv_myo = []
-
-    # Perform motion tracking for each tagged image
-    for i in idx:
-        # Crop the image to save computation for image registration
-        os.system('mirtk transform-image {0}/seg_sa_ED.nii.gz {1}/seg_sa_ED_resampled_on_tag_{2}.nii.gz '
-                  '-target {0}/tag_{2}.nii.gz'.format(data_dir, output_dir, i))
-        os.system('padding {0}/seg_sa_ED_resampled_on_tag_{1}.nii.gz '
-                  '{0}/seg_sa_ED_resampled_on_tag_{1}.nii.gz '
-                  '{0}/seg_sa_ED_resampled_on_tag_{1}.nii.gz 3 0'.format(output_dir, i))
-        os.system('auto_crop_image {0}/seg_sa_ED_resampled_on_tag_{1}.nii.gz '
-                  '{0}/seg_sa_ED_resampled_crop_on_tag_{1}.nii.gz -reserve 20'.format(output_dir, i))
-        os.system('mirtk transform-image {0}/tag_{1}.nii.gz {2}/tag_{1}_crop.nii.gz '
-                  '-target {2}/seg_sa_ED_resampled_crop_on_tag_{1}.nii.gz'.format(data_dir, i, output_dir))
-
-        # Split the cine sequence
-        split_sequence('{0}/tag_{1}_crop.nii.gz'.format(output_dir, i), '{0}/tag_{1}_crop_fr'.format(output_dir, i))
-
-        # Inter-frame motion estimation
-        nim = nib.load('{0}/tag_{1}_crop.nii.gz'.format(output_dir, i))
-        T = nim.header['dim'][4]
-        for fr in range(1, T):
-            target = '{0}/tag_{1}_crop_fr{2:02d}.nii.gz'.format(output_dir, i, fr - 1)
-            source = '{0}/tag_{1}_crop_fr{2:02d}.nii.gz'.format(output_dir, i, fr)
-            par = '{0}/ffd_tag_motion.cfg'.format(par_dir)
-            dof = '{0}/ffd_{1}_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, i, fr - 1, fr)
-            os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
-
-        # Compose inter-frame transformation fields
-        os.system('dofcreate {0}/ffd_{1}_00_to_00.dof.gz'.format(output_dir, i))
-        for fr in range(2, T):
-            dofs = ''
-            for k in range(1, fr + 1):
-                dof = '{0}/ffd_{1}_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, i, k - 1, k)
-                dofs += dof + ' '
-            dof_out = '{0}/ffd_{1}_00_to_{2:02d}.dof.gz'.format(output_dir, i, fr)
-            os.system('mirtk compose-dofs {0} {1}'.format(dofs, dof_out))
-
-        # Do not refine motion fields for tagged MR images, as ED frame looks
-        # quite different from other time frames.
-
-        # Extract the myocardial contour
-        # Do not use the resampled short-axis segmentation on the tagged image,
-        # which is not smooth due to interpolation artefact.
-        # Simply extract a slice from short-axis image.
-        extract_short_axis_slice_according_to_tag('{0}/seg_sa_ED.nii.gz'.format(data_dir),
-                                                  '{0}/tag_{1}.nii.gz'.format(data_dir, i),
-                                                  '{0}/seg_sa_ED_on_tag_{1}.nii.gz'.format(output_dir, i))
-        extract_myocardial_contour('{0}/seg_sa_ED_on_tag_{1}.nii.gz'.format(output_dir, i),
-                                   '{0}/myo_{1}_contour_ED.vtk'.format(output_dir, i), part=part[i])
-
-        # Transform the contours and calculate the strain
-        for fr in range(0, T):
-            os.system('calculate_strain {0}/tag_{1}_crop.nii.gz {0}/myo_{1}_contour_ED.vtk '
-                      '{0}/ffd_{1}_00_to_{2:02d}.dof.gz '
-                      '{0}/strain_{1}_contour_fr{2:02d}.vtk'.format(output_dir, i, fr))
-
-        # Transform the segmentation and evaluate the Dice metric
-        eval_dice = False
-        if eval_dice:
-            os.system('mirtk transform-image {0}/seg_sa.nii.gz {1}/seg_sa_on_tag_{2}.nii.gz '
-                      '-target {1}/seg_sa_ED_on_tag_{2}.nii.gz'.format(data_dir, output_dir, i))
-            split_sequence('{0}/seg_sa_on_tag_{1}.nii.gz'.format(output_dir, i),
-                           '{0}/seg_sa_on_tag_{1}_fr'.format(output_dir, i))
-            nim_sa = nib.load('{0}/seg_sa_on_tag_{1}.nii.gz'.format(output_dir, i))
-            dt_sa = nim_sa.header['pixdim'][4]
-            dt_tag = nim.header['pixdim'][4]
-
-            image_names = ''
-            for fr in range(0, T):
-                fr_sa = int(round((fr * dt_tag) / dt_sa))
-                os.system('mirtk transform-image {0}/seg_sa_on_tag_{1}_fr{3:02d}.nii.gz '
-                          '{0}/seg_sa_on_tag_{1}_warp_ffd_fr{2:02d}.nii.gz '
-                          '-dofin {0}/ffd_{1}_00_to_{2:02d}.dof.gz '
-                          '-target {0}/seg_sa_on_tag_{1}_fr00.nii.gz'.format(output_dir, i, fr, fr_sa))
-                image_A = nib.load('{0}/seg_sa_on_tag_{1}_fr00.nii.gz'.format(output_dir, i)).get_data()
-                image_B = nib.load('{0}/seg_sa_on_tag_{1}_warp_ffd_fr{2:02d}.nii.gz'.format(output_dir, i, fr)).get_data()
-                dice_lv_myo += [[np_categorical_dice(image_A, image_B, 1),
-                                 np_categorical_dice(image_A, image_B, 2)]]
-                image_names += ' {0}/seg_sa_on_tag_{1}_warp_ffd_fr{2:02d}.nii.gz'.format(output_dir, i, fr)
-
-    if eval_dice:
-        print(np.mean(dice_lv_myo, axis=0))
-        df_dice = pd.DataFrame(dice_lv_myo)
-        df_dice.to_csv('{0}/dice_tag_warp_ffd.csv'.format(output_dir), index=None, header=None)
-
-    # Merge the polydata for three parts
-    nim = nib.load('{0}/tag_1_crop.nii.gz'.format(output_dir))
-    T = nim.header['dim'][4]
-    for fr in range(0, T):
-        append = vtk.vtkAppendPolyData()
-        reader = {}
-        for i in idx:
-            reader[i] = vtk.vtkPolyDataReader()
-            reader[i].SetFileName('{0}/strain_{1}_contour_fr{2:02d}.vtk'.format(output_dir, i, fr))
-            reader[i].Update()
-            append.AddInputData(reader[i].GetOutput())
-        append.Update()
-        writer = vtk.vtkPolyDataWriter()
-        writer.SetFileName('{0}/strain_contour_fr{1:02d}.vtk'.format(output_dir, fr))
-        writer.SetInputData(append.GetOutput())
-        writer.Write()
-
-
-def old_func_evaluate_strain_per_segment(strain_name_stem, csv_name_stem, nim):
-    """ Evaluate displacement and strain per segment """
-    T = nim.header['dim'][4]
-    dt = nim.header['pixdim'][4]
-    table = {}
-    table['strain_radial'] = np.zeros((3, 17, T))
-    table['strain_longit'] = np.zeros((3, 17, T))
-    table['strain_circum'] = np.zeros((3, 17, T))
-
-    for fr in range(0, T):
-        # Read the map
-        reader = vtk.vtkPolyDataReader()
-        reader.SetFileName('{0}_fr{1:02d}.vtk'.format(strain_name_stem, fr))
-        reader.Update()
-        poly = reader.GetOutput()
-        val = {}
-
-        # Read the strain values
-        val['strain_radial'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Strain_Radial'))
-        val['strain_longit'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Strain_Longit'))
-        val['strain_circum'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Strain_Circum'))
-
-        # Read the segment IDs and endo/epi labels
-        aha = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Segment ID'))
-        label = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Label'))
-        endo_idx = (label == 1)
-        epi_idx = (label == 2)
-
-        for c1 in ['strain']:
-            for c2 in ['radial', 'circum']:
-                name = '{0}_{1}'.format(c1, c2)
-
-                # Mean value per segment
-                for i in range(1, 17):
-                    seg_idx = (aha == i)
-
-                    # Both endo and epicardium
-                    table[name][0, i - 1, fr] = np.mean(val[name][seg_idx])
-
-                    # Endocardium
-                    table[name][1, i - 1, fr] = np.mean(val[name][seg_idx & endo_idx])
-
-                    # Epicardium
-                    table[name][2, i - 1, fr] = np.mean(val[name][seg_idx & epi_idx])
-
-                # Mean global value
-                table[name][0, -1, fr] = np.mean(val[name])
-
-                # Endocardium
-                table[name][1, -1, fr] = np.mean(val[name][endo_idx])
-
-                # Epicardium
-                table[name][2, -1, fr] = np.mean(val[name][epi_idx])
-
-    # Save into csv files
-    for c1 in ['strain']:
-        for c2 in ['radial', 'circum']:
-            name = '{0}_{1}'.format(c1, c2)
-            index = [str(x) for x in np.arange(1, 17)] + ['Global']
-
-            df = pd.DataFrame(table[name][0], index=index)
-            df.to_csv('{0}_{1}_myo.csv'.format(csv_name_stem, name))
-            # df = pd.DataFrame(table[name][1], index=index)
-            # df.to_csv('{0}_{1}_endo.csv'.format(csv_name_stem, name))
-            # df = pd.DataFrame(table[name][2], index=index)
-            # df.to_csv('{0}_{1}_epi.csv'.format(csv_name_stem, name))
-
-            # Plot the strain curve for each segment
-            x = np.arange(T) * dt * 1e3
-            for c3 in ['myo']:
-                df = pd.read_csv('{0}_{1}_{2}.csv'.format(csv_name_stem, name, c3), index_col=0)
-                plt.figure()
-                for i in range(1, 17):
-                    plt.plot(x, df.loc[str(i)] * 100, label=str(i), alpha=0.7)
-                plt.plot(x, df.loc['Global'] * 100, 'ko--', linewidth=1, label='Global')
-                plt.xlim([0, T * dt * 1e3])
-                if c2 == 'radial':
-                    plt.ylim([-20, 100])
-                elif c2 == 'circum':
-                    plt.ylim([-40, 20])
-                plt.grid(linestyle='--')
-                plt.xlabel('Time (ms)')
-                plt.ylabel('Strain (%)')
-                # plt.legend(loc=(1.05, 0))
-                plt.tight_layout()
-                plt.savefig('{0}_{1}_{2}.png'.format(csv_name_stem, name, c3))
-
-
-def old_func_evaluate_la_strain_per_segment(strain_name_stem, csv_name_stem, nim):
-    """ Evaluate displacement and strain per segment """
-    T = nim.header['dim'][4]
-    dt = nim.header['pixdim'][4]
-    table = {}
-    table['disp_radial'] = np.zeros((3, 7, T))
-    table['disp_longit'] = np.zeros((3, 7, T))
-    table['disp_circum'] = np.zeros((3, 7, T))
-    table['strain_radial'] = np.zeros((3, 7, T))
-    table['strain_longit'] = np.zeros((3, 7, T))
-    table['strain_circum'] = np.zeros((3, 7, T))
-
-    for fr in range(0, T):
-        # Read the map
-        reader = vtk.vtkPolyDataReader()
-        reader.SetFileName('{0}_fr{1:02d}.vtk'.format(strain_name_stem, fr))
-        reader.Update()
-        poly = reader.GetOutput()
-        val = {}
-
-        # Read the displacement values
-        val['disp_radial'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Displacement_Radial'))
-        val['disp_longit'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Displacement_Longit'))
-        val['disp_circum'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Displacement_Circum'))
-
-        # Read the strain values
-        val['strain_radial'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Strain_Radial'))
-        val['strain_longit'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Strain_Longit'))
-        val['strain_circum'] = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Strain_Circum'))
-
-        # Read the segment IDs and endo/epi labels
-        aha = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Segment ID'))
-        label = numpy_support.vtk_to_numpy(poly.GetPointData().GetArray('Label'))
-        endo_idx = (label == 1)
-        epi_idx = (label == 2)
-
-        for c1 in ['strain']:
-            for c2 in ['longit']:
-                name = '{0}_{1}'.format(c1, c2)
-
-                # Mean value per segment
-                for i in range(1, 7):
-                    seg_idx = (aha == i)
-
-                    # Both endo and epicardium
-                    table[name][0, i - 1, fr] = np.mean(val[name][seg_idx])
-
-                    # Endocardium
-                    table[name][1, i - 1, fr] = np.mean(val[name][seg_idx & endo_idx])
-
-                    # Epicardium
-                    table[name][2, i - 1, fr] = np.mean(val[name][seg_idx & epi_idx])
-
-                # Mean global value excluding the apex
-                # Inaccuracy may arise here for strain analysis as the contraction
-                # of the papillary muscle along the radial direction leads to an
-                # artefactual upward expansion of the apex
-                seg_idx  =(aha != 7)
-                table[name][0, -1, fr] = np.mean(val[name][seg_idx])
-
-                # Endocardium
-                table[name][1, -1, fr] = np.mean(val[name][seg_idx & endo_idx])
-
-                # Epicardium
-                table[name][2, -1, fr] = np.mean(val[name][seg_idx & epi_idx])
-
-    # Save into csv files
-    for c1 in ['strain']:
-        for c2 in ['longit']:
-            name = '{0}_{1}'.format(c1, c2)
-            index = [str(x) for x in np.arange(1, 7)] + ['Global']
-
-            df = pd.DataFrame(table[name][0], index=index)
-            df.to_csv('{0}_{1}_myo.csv'.format(csv_name_stem, name))
-            # df = pd.DataFrame(table[name][1], index=index)
-            # df.to_csv('{0}_{1}_endo.csv'.format(csv_name_stem, name))
-            # df = pd.DataFrame(table[name][2], index=index)
-            # df.to_csv('{0}_{1}_epi.csv'.format(csv_name_stem, name))
-
-            # Plot the strain curve for each segment
-            x = np.arange(T) * dt * 1e3
-            for c3 in ['myo']:
-                df = pd.read_csv('{0}_{1}_{2}.csv'.format(csv_name_stem, name, c3), index_col=0)
-                plt.figure()
-                for i in range(1, 7):
-                    plt.plot(x, df.loc[str(i)] * 100, label=str(i), alpha=0.7)
-                plt.plot(x, df.loc['Global'] * 100, 'ko--', linewidth=1, label='Global')
-                plt.xlim([0, T * dt * 1e3])
-                if c2 == 'longit':
-                    plt.ylim([-40, 20])
-                plt.grid(linestyle='--')
-                plt.xlabel('Time (ms)')
-                plt.ylabel('Strain (%)')
-                # plt.legend(loc=(1.05, 0))
-                plt.tight_layout()
-                plt.savefig('{0}_{1}_{2}.png'.format(csv_name_stem, name, c3))
 
 
 def plot_bulls_eye(data, vmin, vmax, cmap='Reds', color_line='black'):
