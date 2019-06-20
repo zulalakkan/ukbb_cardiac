@@ -237,6 +237,7 @@ def split_volume(image_name, output_name):
 
 
 def image_apply_mask(input_name, output_name, mask_image, pad_value=-1):
+    # Assign the background voxels (mask == 0) with pad_value
     nim = nib.load(input_name)
     image = nim.get_data()
     image[mask_image == 0] = pad_value

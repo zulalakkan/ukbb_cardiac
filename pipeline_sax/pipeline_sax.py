@@ -14,20 +14,20 @@
 # ==============================================================================
 import os
 
-# # Deploy the segmentation network
-# os.system('CUDA_VISIBLE_DEVICES=0 python3 deploy_network.py '
-#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa')
-#
-# # Evaluate ventricular volumes
-# os.system('python3 eval_ventricular_volume.py '
-#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--output_csv table_ventricular_volume.csv')
+# Deploy the segmentation network
+os.system('python3 deploy_network.py --seq_name sa '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa')
+
+# Evaluate ventricular volumes
+os.system('python3 eval_ventricular_volume.py '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--output_csv table_ventricular_volume.csv')
 
 # Evaluate wall thickness
-# os.system('python3 eval_wall_thickness.py '
-#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--output_csv table_wall_thickness.csv')
+os.system('python3 eval_wall_thickness.py '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--output_csv table_wall_thickness.csv')
 
 # Evaluate strain values
 os.system('python3 eval_strain_sax.py '
