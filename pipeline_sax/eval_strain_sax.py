@@ -66,7 +66,6 @@ if __name__ == '__main__':
             df_radial = pd.read_csv('{0}/strain_sa_radial.csv'.format(data_dir), index_col=0)
             df_circum = pd.read_csv('{0}/strain_sa_circum.csv'.format(data_dir), index_col=0)
             line = [df_circum.iloc[i, :].min() for i in range(17)] + [df_radial.iloc[i, :].max() for i in range(17)]
-            print(line)
             table += [line]
             processed_list += [data]
 

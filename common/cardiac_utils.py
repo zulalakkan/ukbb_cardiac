@@ -1402,12 +1402,26 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
     # Crop the image to save computation for image registration
     # Focus on the left ventricle so that motion tracking is less affected by
     # the movement of RV and LV outflow tract
-    os.system('padding {0}/seg2_la_4ch_ED.nii.gz {0}/seg2_la_4ch_ED.nii.gz '
-              '{1}/seg2_la_4ch_lv_ED.nii.gz 2 1'.format(data_dir, output_dir))
-    os.system('padding {0}/seg2_la_4ch_lv_ED.nii.gz {0}/seg2_la_4ch_lv_ED.nii.gz '
-              '{0}/seg2_la_4ch_lv_ED.nii.gz 1 0 -invert'.format(output_dir))
-    os.system('auto_crop_image {0}/seg2_la_4ch_lv_ED.nii.gz {0}/seg2_la_4ch_lv_crop_ED.nii.gz '
-              '-reserve 20'.format(output_dir))
+    padding('{0}/seg2_la_4ch_ED.nii.gz'.format(data_dir),
+            '{0}/seg2_la_4ch_ED.nii.gz'.format(data_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir), 2, 1)
+    padding('{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir), 3, 0)
+    padding('{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir), 4, 0)
+    padding('{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+            '{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir), 5, 0)
+    auto_crop_image('{0}/seg2_la_4ch_lv_ED.nii.gz'.format(output_dir),
+                    '{0}/seg2_la_4ch_lv_crop_ED.nii.gz'.format(output_dir), 20)
+    # os.system('padding {0}/seg2_la_4ch_ED.nii.gz {0}/seg2_la_4ch_ED.nii.gz '
+    #           '{1}/seg2_la_4ch_lv_ED.nii.gz 2 1'.format(data_dir, output_dir))
+    # os.system('padding {0}/seg2_la_4ch_lv_ED.nii.gz {0}/seg2_la_4ch_lv_ED.nii.gz '
+    #           '{0}/seg2_la_4ch_lv_ED.nii.gz 1 0 -invert'.format(output_dir))
+    # os.system('auto_crop_image {0}/seg2_la_4ch_lv_ED.nii.gz {0}/seg2_la_4ch_lv_crop_ED.nii.gz '
+    #           '-reserve 20'.format(output_dir))
     os.system('mirtk transform-image {0}/la_4ch.nii.gz {1}/la_4ch_crop.nii.gz '
               '-target {1}/seg2_la_4ch_lv_crop_ED.nii.gz'.format(data_dir, output_dir))
     os.system('mirtk transform-image {0}/seg2_la_4ch.nii.gz {1}/seg2_la_4ch_crop.nii.gz '
@@ -1426,19 +1440,19 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
     # Label class in the segmentation
     label = {'BG': 0, 'LV': 1, 'Myo': 2, 'RV': 3, 'LA': 4, 'RA': 5}
 
-    # Mask image, which is dilated from the epicardium
-    # Use the same mask across the time frames, so that the resulting
-    # free form deformation (FFD) will have a consistent lattice.
-    nim = nib.load('{0}/seg2_la_4ch_crop.nii.gz'.format(output_dir))
-    seg = nim.get_data()
-    X, Y = seg.shape[:2]
-    mask = np.zeros((X, Y), dtype=np.uint8)
-    for fr in range(T):
-        mask_fr = ((seg[:, :, 0, fr] == label['LV']) | (seg[:, :, 0, fr] == label['Myo'])).astype(np.uint8)
-        mask_fr = cv2.dilate(mask_fr, np.ones((3, 3), dtype=np.uint8), iterations=5)
-        mask = (mask | mask_fr)
-    nim_mask = nib.Nifti1Image(mask, nim.affine)
-    nib.save(nim_mask, '{0}/seg2_la_4ch_crop_mask.nii.gz'.format(output_dir))
+    # # Mask image, which is dilated from the epicardium
+    # # Use the same mask across the time frames, so that the resulting
+    # # free form deformation (FFD) will have a consistent lattice.
+    # nim = nib.load('{0}/seg2_la_4ch_crop.nii.gz'.format(output_dir))
+    # seg = nim.get_data()
+    # X, Y = seg.shape[:2]
+    # mask = np.zeros((X, Y), dtype=np.uint8)
+    # for fr in range(T):
+    #     mask_fr = ((seg[:, :, 0, fr] == label['LV']) | (seg[:, :, 0, fr] == label['Myo'])).astype(np.uint8)
+    #     mask_fr = cv2.dilate(mask_fr, np.ones((3, 3), dtype=np.uint8), iterations=5)
+    #     mask = (mask | mask_fr)
+    # nim_mask = nib.Nifti1Image(mask, nim.affine)
+    # nib.save(nim_mask, '{0}/seg2_la_4ch_crop_mask.nii.gz'.format(output_dir))
 
     # Split the cine sequence
     split_sequence('{0}/la_4ch_crop.nii.gz'.format(output_dir),
@@ -1449,17 +1463,19 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         target_fr = fr - 1
         source_fr = fr
 
-        # Apply the mask to the target image so that the image registration
-        # focuses on the myocardium, which is the region for strain analysis.
-        image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
-                         '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
-                         mask)
-        image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
-                         '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
-                         mask)
-
-        target = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr)
-        source = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr)
+        # # Apply the mask to the target image so that the image registration
+        # # focuses on the myocardium, which is the region for strain analysis.
+        # image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
+        #                  '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
+        #                  mask)
+        # image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
+        #                  '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
+        #                  mask)
+        #
+        # target = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr)
+        # source = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr)
+        target = '{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, target_fr)
+        source = '{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, source_fr)
         par = '{0}/ffd_cine_la_2d_motion.cfg'.format(par_dir)
         dof = '{0}/ffd_la_4ch_pair_{1:02d}_to_{2:02d}.dof.gz'.format(output_dir, target_fr, source_fr)
         os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
@@ -1480,17 +1496,19 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         target_fr = (fr + 1) % T
         source_fr = fr
 
-        # Apply the mask to the target image so that the image registration
-        # focuses on the myocardium, which is the region for strain analysis.
-        image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
-                         '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
-                         mask)
-        image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
-                         '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
-                         mask)
-
-        target = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr)
-        source = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr)
+        # # Apply the mask to the target image so that the image registration
+        # # focuses on the myocardium, which is the region for strain analysis.
+        # image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
+        #                  '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr),
+        #                  mask)
+        # image_apply_mask('{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
+        #                  '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr),
+        #                  mask)
+        #
+        # target = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, target_fr)
+        # source = '{0}/la_4ch_crop_mask_fr{1:02d}.nii.gz'.format(output_dir, source_fr)
+        target = '{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, target_fr)
+        source = '{0}/la_4ch_crop_fr{1:02d}.nii.gz'.format(output_dir, source_fr)
         par = '{0}/ffd_cine_la_2d_motion.cfg'.format(par_dir)
         dof = '{0}/ffd_la_4ch_pair_{1:02d}_to_{2:02d}.dof.gz'.format(output_dir, target_fr, source_fr)
         os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
@@ -1507,9 +1525,9 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         os.system('mirtk compose-dofs {0} {1} -approximate'.format(dofs, dof_out))
 
     # Average the forward and backward transformations
-    os.system('dofcreate {0}/ffd_la_4ch_forward_00_to_00.dof.gz'.format(output_dir))
-    os.system('dofcreate {0}/ffd_la_4ch_backward_00_to_00.dof.gz'.format(output_dir))
-    os.system('dofcreate {0}/ffd_la_4ch_00_to_00.dof.gz'.format(output_dir))
+    os.system('mirtk init-dof {0}/ffd_la_4ch_forward_00_to_00.dof.gz'.format(output_dir))
+    os.system('mirtk init-dof {0}/ffd_la_4ch_backward_00_to_00.dof.gz'.format(output_dir))
+    os.system('mirtk init-dof {0}/ffd_la_4ch_00_to_00.dof.gz'.format(output_dir))
     for fr in range(1, T):
         dof_forward = '{0}/ffd_la_4ch_forward_00_to_{1:02d}.dof.gz'.format(output_dir, fr)
         weight_forward = float(T - fr) / T
@@ -1522,12 +1540,6 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
 
     # Transform the contours and calculate the strain
     for fr in range(0, T):
-        # Old code (leave from comparison), which calculates the strain
-        # tensor from the Jacobian matrix
-        # os.system('calculate_strain {0}/sa_crop.nii.gz '
-        #           '{0}/la_4ch_myo_contour_ED.vtk '
-        #           '{0}/ffd_la_4ch_00_to_{1:02d}.dof.gz '
-        #           '{0}/strain_contour_la_4ch_fr{1:02d}.vtk'.format(output_dir, fr))
         os.system('mirtk transform-points {0}/la_4ch_myo_contour_ED.vtk '
                   '{0}/la_4ch_myo_contour_fr{1:02d}.vtk '
                   '-dofin {0}/ffd_la_4ch_00_to_{1:02d}.dof.gz'.format(output_dir, fr))

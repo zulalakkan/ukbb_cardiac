@@ -40,10 +40,10 @@ if __name__ == '__main__':
 
         # Quality control for segmentation at ED
         # If the segmentation quality is low, the following functions may fail.
-        seg_sa_name = '{0}/seg_sa_ED.nii.gz'.format(data_dir)
-        if not os.path.exists(seg_sa_name):
+        seg_la_name = '{0}/seg2_la_4ch_ED.nii.gz'.format(data_dir)
+        if not os.path.exists(seg_la_name):
             continue
-        if not sa_pass_quality_control(seg_sa_name):
+        if not la_pass_quality_control(seg_la_name):
             continue
 
         # Intermediate result directory
@@ -52,38 +52,26 @@ if __name__ == '__main__':
             os.makedirs(motion_dir)
 
         # Perform motion tracking on short-axis images and calculate the strain
-        cine_2d_sa_motion_and_strain_analysis(data_dir,
+        cine_2d_la_motion_and_strain_analysis(data_dir,
                                               args.par_dir,
                                               motion_dir,
-                                              '{0}/strain_sa'.format(data_dir))
+                                              '{0}/strain_la_4ch'.format(data_dir))
 
-        # Remove intermediate files
-        os.system('rm -rf {0}'.format(motion_dir))
+        # # Remove intermediate files
+        # os.system('rm -rf {0}'.format(motion_dir))
 
         # Record data
-        if os.path.exists('{0}/strain_sa_radial.csv'.format(data_dir)) \
-                and os.path.exists('{0}/strain_sa_circum.csv'.format(data_dir)):
-            df_radial = pd.read_csv('{0}/strain_sa_radial.csv'.format(data_dir), index_col=0)
-            df_circum = pd.read_csv('{0}/strain_sa_circum.csv'.format(data_dir), index_col=0)
-            line = [df_circum.iloc[i, :].min() for i in range(17)] + [df_radial.iloc[i, :].max() for i in range(17)]
-            print(line)
+        if os.path.exists('{0}/strain_la_4ch_longit.csv'.format(data_dir)):
+            df_longit = pd.read_csv('{0}/strain_la_4ch_longit.csv'.format(data_dir), index_col=0)
+            line = [df_longit.iloc[i, :].min() for i in range(7)]
             table += [line]
             processed_list += [data]
 
     # Save strain values for all the subjects
     df = pd.DataFrame(table, index=processed_list,
-                      columns=['Ecc_AHA_1 (%)', 'Ecc_AHA_2 (%)', 'Ecc_AHA_3 (%)',
-                               'Ecc_AHA_4 (%)', 'Ecc_AHA_5 (%)', 'Ecc_AHA_6 (%)',
-                               'Ecc_AHA_7 (%)', 'Ecc_AHA_8 (%)', 'Ecc_AHA_9 (%)',
-                               'Ecc_AHA_10 (%)', 'Ecc_AHA_11 (%)', 'Ecc_AHA_12 (%)',
-                               'Ecc_AHA_13 (%)', 'Ecc_AHA_14 (%)', 'Ecc_AHA_15 (%)', 'Ecc_AHA_16 (%)',
-                               'Ecc_Global (%)',
-                               'Err_AHA_1 (%)', 'Err_AHA_2 (%)', 'Err_AHA_3 (%)',
-                               'Err_AHA_4 (%)', 'Err_AHA_5 (%)', 'Err_AHA_6 (%)',
-                               'Err_AHA_7 (%)', 'Err_AHA_8 (%)', 'Err_AHA_9 (%)',
-                               'Err_AHA_10 (%)', 'Err_AHA_11 (%)', 'Err_AHA_12 (%)',
-                               'Err_AHA_13 (%)', 'Err_AHA_14 (%)', 'Err_AHA_15 (%)', 'Err_AHA_16 (%)',
-                               'Err_Global (%)'])
+                      columns=['Ell_1 (%)', 'Ell_2 (%)', 'Ell_3 (%)',
+                               'Ell_4 (%)', 'Ell_5 (%)', 'Ell_6 (%)',
+                               'Ell_Global (%)'])
     df.to_csv(args.output_csv)
 
 
