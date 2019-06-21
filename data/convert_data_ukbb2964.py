@@ -22,7 +22,11 @@
     annotated contours from the cvi42 xml files, read the matching DICOM and cvi42 contours
     and finally save them as nifti images.
     """
-import os, csv, glob, re, time
+import os
+import csv
+import glob
+import re
+import time
 import pandas as pd
 import dateutil.parser
 from biobank_utils import *
@@ -42,7 +46,8 @@ if __name__ == '__main__':
             # Only convert data if there is manual annotation, i.e. cvi42 files
             if os.path.exists(os.path.join(data_dir, '{0}_cvi42.zip'.format(eid))):
                 # Check the annotator's name
-                s = os.popen('unzip -c {0}/{1}_cvi42.zip "*.cvi42wsx" | grep OwnerUserName'.format(data_dir, eid)).read()
+                s = os.popen('unzip -c {0}/{1}_cvi42.zip "*.cvi42wsx" '
+                             '| grep OwnerUserName'.format(data_dir, eid)).read()
                 annotator = (s.split('>')[1]).split('<')[0]
 
                 # Decompress the zip files in this directory

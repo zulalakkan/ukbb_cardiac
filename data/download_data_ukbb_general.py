@@ -16,7 +16,8 @@
     The script downloads the cardiac MR images for a UK Biobank Application and
     converts the DICOM into nifti images.
     """
-import os, csv, glob, re, time
+import os
+import glob
 import pandas as pd
 from biobank_utils import *
 import dateutil.parser
@@ -61,7 +62,7 @@ if __name__ == '__main__':
         # Create a batch file for this subject
         batch_file = os.path.join(data_dir, '{0}_batch'.format(eid))
         with open(batch_file, 'w') as f_batch:
-            for j in range(20208, 20210):#
+            for j in range(20208, 20210):
                 # The field ID information can be searched at http://biobank.ctsu.ox.ac.uk/crystal/search.cgi
                 # 20208: Long axis heart images - DICOM Heart MRI
                 # 20209: Short axis heart images - DICOM Heart MRI

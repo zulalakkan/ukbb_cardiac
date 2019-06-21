@@ -18,7 +18,9 @@
     This parser searches for dicom UIDs in the xml file, extract the contour
     point coordinates and save them in a pickle file for each image slice.
     """
-import os, sys, pickle
+import os
+import sys
+import pickle
 import numpy as np
 from xml.dom import minidom
 

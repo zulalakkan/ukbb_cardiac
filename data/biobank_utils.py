@@ -23,10 +23,14 @@
     fail in reading certain DICOM images, perhaps due to the DICOM format, which has no standard
     and vary between manufacturers and machines.
 """
-import os, glob, re, pickle, cv2
+import os
+import re
+import pickle
+import cv2
 import pydicom as dicom
 import SimpleITK as sitk
-import numpy as np, nibabel as nib
+import numpy as np
+import nibabel as nib
 
 
 def repl(m):
@@ -78,6 +82,14 @@ class Biobank_Dataset(object):
         sax_mix_dir = []
         lax_mix_dir = []
         ao_dir = []
+        lvot_dir = []
+        flow_dir = []
+        flow_mag_dir = []
+        flow_pha_dir = []
+        shmolli_dir = []
+        shmolli_fitpar_dir = []
+        shmolli_t1map_dir = []
+        tag_dir = []
         for s in subdirs:
             m = re.match('CINE_segmented_SAX_b(\d*)$', s)
             if m:
@@ -94,6 +106,23 @@ class Biobank_Dataset(object):
                 lax_mix_dir = os.path.join(input_dir, s)
             elif re.match('CINE_segmented_Ao_dist$', s):
                 ao_dir = os.path.join(input_dir, s)
+            elif re.match('CINE_segmented_LVOT$', s):
+                lvot_dir = os.path.join(input_dir, s)
+            elif re.match('flow_250_tp_AoV_bh_ePAT@c$', s):
+                flow_dir = os.path.join(input_dir, s)
+            elif re.match('flow_250_tp_AoV_bh_ePAT@c_MAG$', s):
+                flow_mag_dir = os.path.join(input_dir, s)
+            elif re.match('flow_250_tp_AoV_bh_ePAT@c_P$', s):
+                flow_pha_dir = os.path.join(input_dir, s)
+            elif re.match('ShMOLLI_192i_SAX_b2s$', s):
+                shmolli_dir = os.path.join(input_dir, s)
+            elif re.match('ShMOLLI_192i_SAX_b2s_SAX_b2s_FITPARAMS$', s):
+                shmolli_fitpar_dir = os.path.join(input_dir, s)
+            elif re.match('ShMOLLI_192i_SAX_b2s_SAX_b2s_SAX_b2s_T1MAP$', s):
+                shmolli_t1map_dir = os.path.join(input_dir, s)
+            m = re.match('cine_tagging_3sl_SAX_b(\d*)s$', s)
+            if m:
+                tag_dir += [(os.path.join(input_dir, s), int(m.group(1)))]
 
         if not sax_dir:
             print('Warning: SAX subdirectories not found!')
@@ -149,6 +178,24 @@ class Biobank_Dataset(object):
             self.subdir['la_4ch'] = [lax_4ch_dir]
         if ao_dir:
             self.subdir['ao'] = [ao_dir]
+        if lvot_dir:
+            self.subdir['lvot'] = [lvot_dir]
+        if flow_dir:
+            self.subdir['flow'] = [flow_dir]
+        if flow_mag_dir:
+            self.subdir['flow_mag'] = [flow_mag_dir]
+        if flow_pha_dir:
+            self.subdir['flow_pha'] = [flow_pha_dir]
+        if shmolli_dir:
+            self.subdir['shmolli'] = [shmolli_dir]
+        if shmolli_fitpar_dir:
+            self.subdir['shmolli_fitpar'] = [shmolli_fitpar_dir]
+        if shmolli_t1map_dir:
+            self.subdir['shmolli_t1map'] = [shmolli_t1map_dir]
+        if tag_dir:
+            tag_dir = sorted(tag_dir, key=lambda x: x[1])
+            for x, y in tag_dir:
+                self.subdir['tag_{0}'.format(y)] = [x]
 
         self.cvi42_dir = cvi42_dir
 
@@ -258,10 +305,10 @@ class Biobank_Dataset(object):
 
             # Affine matrix which converts the voxel coordinate to world coordinate
             affine = np.eye(4)
-            affine[:3,0] = axis_x * dx
-            affine[:3,1] = axis_y * dy
-            affine[:3,2] = axis_z * dz
-            affine[:3,3] = pos_ul
+            affine[:3, 0] = axis_x * dx
+            affine[:3, 1] = axis_y * dy
+            affine[:3, 2] = axis_z * dz
+            affine[:3, 3] = pos_ul
 
             # The 4D volume
             volume = np.zeros((X, Y, Z, T), dtype='float32')
@@ -403,4 +450,3 @@ class Biobank_Dataset(object):
         """ Save the image in nifti format. """
         for name, image in self.data.items():
             image.WriteToNifti(os.path.join(output_dir, '{0}.nii.gz'.format(name)))
-
