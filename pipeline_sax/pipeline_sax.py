@@ -13,24 +13,26 @@
 # limitations under the License.
 # ==============================================================================
 import os
+working_dir = os.getcwd()
+
 
 # Deploy the segmentation network
-os.system('python3 deploy_network.py --seq_name sa '
+os.system('python3 {0}/../common/deploy_network.py --seq_name sa '
           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa')
+          '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa'.format(working_dir))
 
 # Evaluate ventricular volumes
-os.system('python3 eval_ventricular_volume.py '
+os.system('python3 {0}/eval_ventricular_volume.py '
           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--output_csv table_ventricular_volume.csv')
+          '--output_csv table_ventricular_volume.csv'.format(working_dir))
 
 # Evaluate wall thickness
-os.system('python3 eval_wall_thickness.py '
+os.system('python3 {0}/eval_wall_thickness.py '
           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--output_csv table_wall_thickness.csv')
+          '--output_csv table_wall_thickness.csv'.format(working_dir))
 
 # Evaluate strain values
-os.system('python3 eval_strain_sax.py '
+os.system('python3 {0}/eval_strain_sax.py '
           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
           '--par_dir /vol/biomedic2/wbai/git/ukbb_cardiac/par '
-          '--output_csv table_strain_sax.csv')
+          '--output_csv table_strain_sax.csv'.format(working_dir))
