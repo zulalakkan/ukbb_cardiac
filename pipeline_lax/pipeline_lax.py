@@ -16,20 +16,23 @@ import os
 working_dir = os.getcwd()
 
 
-# # Deploy the segmentation network
-# os.system('python3 {0}/../common/deploy_network.py --seq_name la_2ch '
-#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_la_2ch'.format(working_dir))
-#
-# os.system('python3 {0}/../common/deploy_network.py --seq_name la_4ch '
-#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_la_4ch'.format(working_dir))
-#
-# # Evaluate atrial volumes
-# os.system('python3 {0}/eval_atrial_volume.py '
-#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--output_csv table_atrial_volume.csv'.format(working_dir))
-#
+# Deploy the segmentation network
+os.system('python3 {0}/../common/deploy_network.py --seq_name la_2ch '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_la_2ch'.format(working_dir))
+
+os.system('python3 {0}/../common/deploy_network.py --seq_name la_4ch '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_la_4ch'.format(working_dir))
+os.system('python3 {0}/../common/deploy_network.py --seq_name la_4ch --seg4 '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--model_path /vol/biomedic2/wbai/ukbb_cardiac/UKBB_18545/model/FCN_la_4ch_level5_filter16_22333_Adam_batch20_iter20000_lr0.001/FCN_la_4ch_level5_filter16_22333_Adam_batch20_iter20000_lr0.001.ckpt-20000'.format(working_dir))
+
+# Evaluate atrial volumes
+os.system('python3 {0}/eval_atrial_volume.py '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--output_csv table_atrial_volume.csv'.format(working_dir))
+
 # Evaluate strain values
 os.system('python3 eval_strain_lax.py '
           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '

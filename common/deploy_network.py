@@ -36,6 +36,9 @@ tf.app.flags.DEFINE_boolean('process_seq', True,
                             'Process a time sequence of images.')
 tf.app.flags.DEFINE_boolean('save_seg', True,
                             'Save segmentation.')
+tf.app.flags.DEFINE_boolean('seg4', False,
+                            'Segment all the 4 chambers in long-axis 4 chamber view. '
+                            'The network is trained using 200 subjects from Application 18545.')
 
 
 if __name__ == '__main__':
@@ -115,7 +118,7 @@ if __name__ == '__main__':
                 # Determine ES frame according to the minimum LV volume.
                 k = {}
                 k['ED'] = 0
-                if FLAGS.seq_name == 'sa':
+                if FLAGS.seq_name == 'sa' or (FLAGS.seq_name == 'la_4ch' and FLAGS.seg4):
                     k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
                 else:
                     k['ES'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
@@ -126,13 +129,20 @@ if __name__ == '__main__':
                     print('  Saving segmentation ...')
                     nim2 = nib.Nifti1Image(pred, nim.affine)
                     nim2.header['pixdim'] = nim.header['pixdim']
-                    nib.save(nim2, '{0}/seg_{1}.nii.gz'.format(data_dir, FLAGS.seq_name))
+                    if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
+                        seg_name = '{0}/seg4_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+                    else:
+                        seg_name = '{0}/seg_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+                    nib.save(nim2, seg_name)
 
                     for fr in ['ED', 'ES']:
                         nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]], nim.affine),
                                  '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
-                        nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine),
-                                 '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
+                        if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
+                            seg_name = '{0}/seg4_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                        else:
+                            seg_name = '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                        nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine), seg_name)
             else:
                 # Process ED and ES time frames
                 image_ED_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ED')
@@ -193,7 +203,11 @@ if __name__ == '__main__':
                         print('  Saving segmentation ...')
                         nim2 = nib.Nifti1Image(pred, nim.affine)
                         nim2.header['pixdim'] = nim.header['pixdim']
-                        nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
+                        if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
+                            seg_name = '{0}/seg4_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                        else:
+                            seg_name = '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                        nib.save(nim2, seg_name)
 
         if FLAGS.process_seq:
             print('Average segmentation time = {:.3f}s per sequence'.format(np.mean(table_time)))

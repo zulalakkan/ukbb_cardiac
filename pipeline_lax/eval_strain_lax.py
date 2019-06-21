@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
         # Quality control for segmentation at ED
         # If the segmentation quality is low, the following functions may fail.
-        seg_la_name = '{0}/seg2_la_4ch_ED.nii.gz'.format(data_dir)
+        seg_la_name = '{0}/seg4_la_4ch_ED.nii.gz'.format(data_dir)
         if not os.path.exists(seg_la_name):
             continue
         if not la_pass_quality_control(seg_la_name):
@@ -57,8 +57,8 @@ if __name__ == '__main__':
                                               motion_dir,
                                               '{0}/strain_la_4ch'.format(data_dir))
 
-        # # Remove intermediate files
-        # os.system('rm -rf {0}'.format(motion_dir))
+        # Remove intermediate files
+        os.system('rm -rf {0}'.format(motion_dir))
 
         # Record data
         if os.path.exists('{0}/strain_la_4ch_longit.csv'.format(data_dir)):
@@ -73,5 +73,3 @@ if __name__ == '__main__':
                                'Ell_4 (%)', 'Ell_5 (%)', 'Ell_6 (%)',
                                'Ell_Global (%)'])
     df.to_csv(args.output_csv)
-
-
