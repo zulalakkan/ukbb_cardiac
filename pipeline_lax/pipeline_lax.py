@@ -24,14 +24,14 @@ working_dir = os.getcwd()
 # os.system('python3 {0}/../common/deploy_network.py --seq_name la_4ch '
 #           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
 #           '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_la_4ch'.format(working_dir))
-
-# Evaluate atrial volumes
-os.system('python3 eval_ventricular_volume.py '
-          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--output_csv table_ventricular_volume.csv')
 #
-# # Evaluate strain values
-# os.system('python3 eval_strain_sax.py '
+# # Evaluate atrial volumes
+# os.system('python3 {0}/eval_atrial_volume.py '
 #           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-#           '--par_dir /vol/biomedic2/wbai/git/ukbb_cardiac/par '
-#           '--output_csv table_strain_sax.csv')
+#           '--output_csv table_atrial_volume.csv'.format(working_dir))
+#
+# Evaluate strain values
+os.system('python3 eval_strain_lax.py '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+          '--par_dir /vol/biomedic2/wbai/git/ukbb_cardiac/par '
+          '--output_csv table_strain_lax.csv')

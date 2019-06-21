@@ -17,115 +17,9 @@ import argparse
 import numpy as np
 import pandas as pd
 import nibabel as nib
-
-
-def pass_quality_control(eid, label, label_dict):
-    """ Quality control """
-    for l_name, l in label_dict.items():
-        # Criterion 1: the atrium does not disappear at some point.
-        T = label.shape[3]
-        for t in range(T):
-            label_t = label[:, :, 0, t]
-            area = np.sum(label_t == l)
-            if area == 0:
-                logging.info('{0}: The area of {1} is 0 at time frame {2}.'.format(
-                    eid, l_name, t))
-                return False
-    return True
-
-
-# Evaluate the atrial area and length from 2 chamber or 4 chamber view images
-def evaluate_area_length(label, nim, long_axis):
-    # Area per pixel
-    pixdim = nim.header['pixdim'][1:4]
-    area_per_pix = pixdim[0] * pixdim[1] * 1e-2  # Unit: cm^2
-
-    # Go through the label class
-    L = []
-    A = []
-    landmarks = []
-    labs = np.sort(list(set(np.unique(label)) - set([0])))
-    for i in labs:
-        # The binary label map
-        label_i = (label == i)
-
-        # Get the largest component in case we have a bad segmentation
-        label_i = get_largest_cc(label_i)
-
-        # Go through all the points in the atrium,
-        # sort them by the distance along the long-axis
-        points_label = np.nonzero(label_i)
-        points = []
-        for j in range(len(points_label[0])):
-            x = points_label[0][j]
-            y = points_label[1][j]
-            points += [[x, y,
-                        np.dot(np.dot(nim.affine, np.array([x, y, 0, 1]))[:3], long_axis)]]
-        points = np.array(points)
-        points = points[points[:, 2].argsort()]
-
-        # The centre at the top part of the atrium (top third)
-        n_points = len(points)
-        top_points = points[int(2 * n_points / 3):]
-        cx, cy, _ = np.mean(top_points, axis=0)
-
-        # The centre at the bottom part of the atrium (bottom third)
-        bottom_points = points[:int(n_points / 3)]
-        bx, by, _ = np.mean(bottom_points, axis=0)
-
-        # Determine the major axis by connecting the geometric centre and the bottom centre
-        # TODO: in the future, determine the major axis using the mitral valve
-        major_axis = np.array([cx - bx, cy - by])
-        major_axis = major_axis / np.linalg.norm(major_axis)
-
-        # Get the intersection between the major axis and the atrium contour
-        px = cx + major_axis[0] * 100
-        py = cy + major_axis[1] * 100
-        qx = cx - major_axis[0] * 100
-        qy = cy - major_axis[1] * 100
-
-        if np.isnan(px) or np.isnan(py) or np.isnan(qx) or np.isnan(qy):
-            return -1, -1, -1
-
-        # Note the difference between nifti image index and cv2 image index
-        # nifti image index: XY
-        # cv2 image index: YX (height, width)
-        image_line = np.zeros(label_i.shape)
-        cv2.line(image_line, (int(qy), int(qx)), (int(py), int(px)), (1, 0, 0))
-        image_line = label_i & (image_line > 0)
-        # plt.figure()
-        # image_rgb = np.zeros(label_i.shape + (3,))
-        # image_rgb[:, :, 0] = label_i
-        # image_rgb[:, :, 1] = image_line
-        # plt.imshow(np.transpose(image_rgb, (1, 0, 2)), origin='lower')
-        # plt.show()
-
-        # Sort the intersection points by the distance along long-axis
-        # and calculate the length of the intersection
-        points_line = np.nonzero(image_line)
-        points = []
-        for j in range(len(points_line[0])):
-            x = points_line[0][j]
-            y = points_line[1][j]
-            # World coordinate
-            point = np.dot(nim.affine, np.array([x, y, 0, 1]))[:3]
-            # Distance along the long-axis
-            points += [np.append(point, np.dot(point, long_axis))]
-        points = np.array(points)
-        if len(points) == 0:
-            return -1, -1, -1
-        points = points[points[:, 3].argsort(), :3]
-        L += [np.linalg.norm(points[-1] - points[0]) * 1e-1]  # Unit: cm
-
-        # Calculate the area
-        A += [np.sum(label_i) * area_per_pix]
-
-        # Landmarks of the intersection points
-        landmarks += [points[0]]
-        landmarks += [points[-1]]
-    return A, L, landmarks
-
-
+import vtk
+import math
+from ukbb_cardiac.common.cardiac_utils import atrium_pass_quality_control, evaluate_atrial_area_length
 
 
 if __name__ == '__main__':
@@ -140,51 +34,135 @@ if __name__ == '__main__':
     processed_list = []
     for data in data_list:
         data_dir = os.path.join(data_path, str(data))
-        image_name = '{0}/sa.nii.gz'.format(data_dir)
-        seg_name = '{0}/seg_sa.nii.gz'.format(data_dir)
+        seg_la_2ch_name = '{0}/seg_la_2ch.nii.gz'.format(data_dir)
+        seg_la_4ch_name = '{0}/seg_la_4ch.nii.gz'.format(data_dir)
+        sa_name = '{0}/sa.nii.gz'.format(data_dir)
 
-        if os.path.exists(image_name) and os.path.exists(seg_name):
+        if os.path.exists(seg_la_2ch_name) and os.path.exists(seg_la_4ch_name) and os.path.exists(sa_name):
             print(data)
 
-            # Image
-            nim = nib.load(image_name)
-            pixdim = nim.header['pixdim'][1:4]
-            volume_per_pix = pixdim[0] * pixdim[1] * pixdim[2] * 1e-3
-            density = 1.05
+            # Determine the long-axis from short-axis image
+            nim_sa = nib.load(sa_name)
+            long_axis = nim_sa.affine[:3, 2] / np.linalg.norm(nim_sa.affine[:3, 2])
+            if long_axis[2] < 0:
+                long_axis *= -1
+
+            # Measurements
+            # A: area
+            # L: length
+            # V: volume
+            # lm: landmark
+            A = {}
+            L = {}
+            V = {}
+            lm = {}
+
+            # Analyse 2 chamber view image
+            nim_2ch = nib.load(seg_la_2ch_name)
+            seg_la_2ch = nim_2ch.get_data()
+            T = nim_2ch.header['dim'][4]
+
+            # Perform quality control for the segmentation
+            if not atrium_pass_quality_control(seg_la_2ch, {'LA': 1}):
+                print('{0} seg_la_2ch does not atrium_pass_quality_control.'.format(data))
+                continue
+
+            A['LA_2ch'] = np.zeros(T)
+            L['LA_2ch'] = np.zeros(T)
+            V['LA_2ch'] = np.zeros(T)
+            lm['2ch'] = {}
+            for t in range(T):
+                area, length, landmarks = evaluate_atrial_area_length(seg_la_2ch[:, :, 0, t], nim_2ch, long_axis)
+                if type(area) == int:
+                    if area < 0:
+                        continue
+
+                A['LA_2ch'][t] = area[0]
+                L['LA_2ch'][t] = length[0]
+                V['LA_2ch'][t] = 8 / (3 * math.pi) * area[0] * area[0] / length[0]
+                lm['2ch'][t] = landmarks
+
+                if t == 0:
+                    # Write the landmarks
+                    points = vtk.vtkPoints()
+                    for p in landmarks:
+                        points.InsertNextPoint(p[0], p[1], p[2])
+                    poly = vtk.vtkPolyData()
+                    poly.SetPoints(points)
+                    writer = vtk.vtkPolyDataWriter()
+                    writer.SetInputData(poly)
+                    writer.SetFileName('{0}/lm_la_2ch_{1:02d}.vtk'.format(data_dir, t))
+                    writer.Write()
+
+            # Analyse 4 chamber view image
+            nim_4ch = nib.load(seg_la_4ch_name)
+            seg_la_4ch = nim_4ch.get_data()
+
+            # Perform quality control for the segmentation
+            if not atrium_pass_quality_control(seg_la_4ch, {'LA': 1, 'RA': 2}):
+                print('{0} seg_la_4ch does not atrium_pass_quality_control.'.format(data))
+                continue
+
+            A['LA_4ch'] = np.zeros(T)
+            L['LA_4ch'] = np.zeros(T)
+            V['LA_4ch'] = np.zeros(T)
+            V['LA_bip'] = np.zeros(T)
+            A['RA_4ch'] = np.zeros(T)
+            L['RA_4ch'] = np.zeros(T)
+            V['RA_4ch'] = np.zeros(T)
+            lm['4ch'] = {}
+            for t in range(T):
+                area, length, landmarks = evaluate_atrial_area_length(seg_la_4ch[:, :, 0, t], nim_4ch, long_axis)
+                if type(area) == int:
+                    if area < 0:
+                        continue
+
+                A['LA_4ch'][t] = area[0]
+                L['LA_4ch'][t] = length[0]
+                V['LA_4ch'][t] = 8 / (3 * math.pi) * area[0] * area[0] / length[0]
+                V['LA_bip'][t] = 8 / (3 * math.pi) * area[0] * A['LA_2ch'][t] / (0.5 * (length[0] + L['LA_2ch'][t]))
+
+                A['RA_4ch'][t] = area[1]
+                L['RA_4ch'][t] = length[1]
+                V['RA_4ch'][t] = 8 / (3 * math.pi) * area[1] * area[1] / length[1]
+                lm['4ch'][t] = landmarks
+
+                if t == 0:
+                    # Write the landmarks
+                    points = vtk.vtkPoints()
+                    for p in landmarks:
+                        points.InsertNextPoint(p[0], p[1], p[2])
+                    poly = vtk.vtkPolyData()
+                    poly.SetPoints(points)
+                    writer = vtk.vtkPolyDataWriter()
+                    writer.SetInputData(poly)
+                    writer.SetFileName('{0}/lm_la_4ch_{1:02d}.vtk'.format(data_dir, t))
+                    writer.Write()
 
             # Heart rate
-            duration_per_cycle = nim.header['dim'][4] * nim.header['pixdim'][4]
+            duration_per_cycle = nim_4ch.header['dim'][4] * nim_4ch.header['pixdim'][4]
             heart_rate = 60.0 / duration_per_cycle
 
-            # Segmentation
-            seg = nib.load(seg_name).get_data()
-
-            frame = {}
-            frame['ED'] = 0
-            vol_t = np.sum(seg == 1, axis=(0, 1, 2)) * volume_per_pix
-            frame['ES'] = np.argmin(vol_t)
-
+            # Record atrial volumes
+            # Left atrial volume: bi-plane estimation
+            # Right atrial volume: single plane estimation
             val = {}
-            for fr_name, fr in frame.items():
-                # Clinical measures
-                val['LV{0}V'.format(fr_name)] = np.sum(seg[:, :, :, fr] == 1) * volume_per_pix
-                val['LV{0}M'.format(fr_name)] = np.sum(seg[:, :, :, fr] == 2) * volume_per_pix * density
-                val['RV{0}V'.format(fr_name)] = np.sum(seg[:, :, :, fr] == 3) * volume_per_pix
+            val['LAV_bip_max'] = np.max(V['LA_bip'])
+            val['LAV_bip_min'] = np.min(V['LA_bip'])
+            val['LASV_bip'] = val['LAV_bip_max'] - val['LAV_bip_min']
+            val['LAEF_bip'] = val['LASV_bip'] / val['LAV_bip_max'] * 100
 
-            val['LVSV'] = val['LVEDV'] - val['LVESV']
-            val['LVCO'] = val['LVSV'] * heart_rate * 1e-3
-            val['LVEF'] = val['LVSV'] / val['LVEDV'] * 100
+            val['RAV_4ch_max'] = np.max(V['RA_4ch'])
+            val['RAV_4ch_min'] = np.min(V['RA_4ch'])
+            val['RASV_4ch'] = val['RAV_4ch_max'] - val['RAV_4ch_min']
+            val['RAEF_4ch'] = val['RASV_4ch'] / val['RAV_4ch_max'] * 100
 
-            val['RVSV'] = val['RVEDV'] - val['RVESV']
-            val['RVCO'] = val['RVSV'] * heart_rate * 1e-3
-            val['RVEF'] = val['RVSV'] / val['RVEDV'] * 100
-
-            line = [val['LVEDV'], val['LVESV'], val['LVSV'], val['LVEF'], val['LVCO'], val['LVEDM'],
-                    val['RVEDV'], val['RVESV'], val['RVSV'], val['RVEF']]
+            line = [val['LAV_bip_max'], val['LAV_bip_min'], val['LASV_bip'], val['LAEF_bip'],
+                    val['RAV_4ch_max'], val['RAV_4ch_min'], val['RASV_4ch'], val['RAEF_4ch']]
             table += [line]
             processed_list += [data]
 
     df = pd.DataFrame(table, index=processed_list,
-                      columns=['LVEDV (mL)', 'LVESV (mL)', 'LVSV (mL)', 'LVEF (%)', 'LVCO (L/min)', 'LVM (g)',
-                               'RVEDV (mL)', 'RVESV (mL)', 'RVSV (mL)', 'RVEF (%)'])
+                      columns=['LAV max (mL)', 'LAV min (mL)', 'LASV (mL)', 'LAEF (%)',
+                               'RAV max (mL)', 'RAV min (mL)', 'RASV (mL)', 'RAEF (%)'])
     df.to_csv(args.output_csv)
