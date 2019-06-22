@@ -17,9 +17,9 @@ working_dir = os.getcwd()
 
 
 # Deploy the segmentation network
-os.system('python3 {0}/../common/deploy_network_ao.py --seq_name ao '
-          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--model_path /vol/biomedic2/wbai/ukbb_cardiac/UKBB_18545/model/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint.ckpt-20000'.format(working_dir))
+#  os.system('python3 {0}/../common/deploy_network_ao.py --seq_name ao '
+#           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
+#           '--model_path /vol/biomedic2/wbai/ukbb_cardiac/UKBB_18545/model/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint.ckpt-20000'.format(working_dir))
 
 # Evaluate aortic distensibility
 os.system('python3 {0}/eval_aortic_area.py '

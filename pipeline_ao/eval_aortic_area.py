@@ -17,6 +17,7 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import argparse
+from ukbb_cardiac.common.cardiac_utils import aorta_pass_quality_control
 
 
 if __name__ == '__main__':
@@ -62,13 +63,16 @@ if __name__ == '__main__':
 
             # Read segmentation
             nim = nib.load(seg_name)
-            label = nim.get_data()
+            seg = nim.get_data()
+
+            if not aorta_pass_quality_control(image, seg):
+                continue
 
             # Measure the maximal and minimal area for the ascending aorta and descending aorta
             val = {}
             for l_name, l in [('AAo', 1), ('DAo', 2)]:
                 val[l_name] = {}
-                A = np.sum(label == l, axis=(0, 1, 2)) * area_per_pixel
+                A = np.sum(seg == l, axis=(0, 1, 2)) * area_per_pixel
                 val[l_name]['max area'] = A.max()
                 val[l_name]['min area'] = A.min()
                 val[l_name]['distensibility'] = (A.max() - A.min()) / (A.min() * central_pp.loc[int(data)]) * 1e3
