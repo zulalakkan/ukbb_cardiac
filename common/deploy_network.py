@@ -215,6 +215,5 @@ if __name__ == '__main__':
             print('Average segmentation time = {:.3f}s per frame'.format(np.mean(table_time)))
         process_time = time.time() - start_time
         print('Including image I/O, CUDA resource allocation, '
-              'it took {:.3f}s for processing {:d} subjects '
-              '({:.3f}s per subjects).'.format(process_time, len(processed_list),
-                                               process_time / len(processed_list)))
+              'it took {:.3f}s for processing {:d} subjects ({:.3f}s per subjects).'.format(
+            process_time, len(processed_list), process_time / len(processed_list)))

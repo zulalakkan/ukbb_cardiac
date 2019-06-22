@@ -162,7 +162,7 @@ if __name__ == '__main__':
         for t in range(T):
             image_name = '{0}/label_ao_prop{1:02d}.nii.gz'.format(motion_dir, t)
             image_names += [image_name]
-        output_name = '{0}/label_ao_prop_suc_CP10.nii.gz'.format(data_dir)
+        output_name = '{0}/label_ao_prop.nii.gz'.format(data_dir)
         make_sequence(image_names, dt, output_name)
 
         # Remove intermediate files

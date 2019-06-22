@@ -1,4 +1,4 @@
-# Copyright 2017, Wenjia Bai. All Rights Reserved.
+# Copyright 2018, Wenjia Bai. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,10 @@ import random
 import numpy as np
 import nibabel as nib
 import tensorflow as tf
+import cv2
 from network import *
 from network_ao import *
-from image_utils import *
+from ukbb_cardiac.common.image_utils import *
 
 
 """ Training parameters """
@@ -46,18 +47,11 @@ tf.app.flags.DEFINE_integer('train_iteration', 20000,
 tf.app.flags.DEFINE_float('learning_rate', 1e-3,
                           'Learning rate.')
 tf.app.flags._global_parser.add_argument('--reduce_lr_after', action='append',
-                                         help='Reduce the learning rate after this '
-                                              'many iterations.')
-tf.app.flags._global_parser.add_argument('--seq_name',
-                                         choices=['ao'],
-                                         default='ao',
-                                         help='Sequence name for training.')
-tf.app.flags._global_parser.add_argument('--model',
-                                         choices=['UNet',
-                                                  'UNet-LSTM',
-                                                  'Temporal-UNet'],
-                                         default='UNet',
-                                         help='Model name.')
+                                         help='Reduce the learning rate after this many iterations.')
+tf.app.flags.DEFINE_enum('seq_name', 'ao', ['ao'],
+                         'Sequence name.')
+tf.app.flags.DEFINE_enum('model', 'UNet', ['UNet', 'UNet-LSTM', 'Temporal-UNet'],
+                         'Model name.')
 tf.app.flags.DEFINE_string('dataset_dir',
                            '/vol/medic02/users/wbai/data/cardiac_atlas/Biobank_ao',
                            'Path to the dataset directory, which is split into '
@@ -69,24 +63,19 @@ tf.app.flags.DEFINE_string('checkpoint_dir', '/vol/bitbucket/wbai/ukbb_cardiac_a
 tf.app.flags.DEFINE_string('model_path', '',
                            'Path to the saved trained model.')
 tf.app.flags.DEFINE_boolean('z_score', True,
-                            'Normalise the image intensity to z-score. '
-                            'Otherwise, rescale the intensity.')
+                            'Normalise the image intensity to z-score. Otherwise, rescale the intensity.')
 tf.app.flags.DEFINE_boolean('bidirectional', True,
                             'Bi-directional LSTM.')
 tf.app.flags.DEFINE_boolean('seq2seq', True,
-                            'Sequence to sequence learning. Otherwise, '
-                            'only learn the last time frame.')
+                            'Sequence to sequence learning. Otherwise, only learn the last time frame.')
 tf.app.flags.DEFINE_integer('weight_R', 5,
                             'Radius of the weighting window.')
 tf.app.flags.DEFINE_float('weight_r', 0,
-                          'Power of weight for the seq2seq loss. '
-                          '0: uniform; 1: linear; 2: square.')
+                          'Power of weight for the seq2seq loss. 0: uniform; 1: linear; 2: square.')
 tf.app.flags.DEFINE_boolean('joint_train', False,
                             'Joint training of UNet and LSTM.')
 tf.app.flags.DEFINE_boolean('from_scratch', False,
                             'Train from scratch for UNet-LSTM.')
-tf.app.flags.DEFINE_integer('trial', 1,
-                            'Trial time.')
 
 
 def get_trusted_mask(label_map, radius=5):
@@ -106,15 +95,13 @@ def get_trusted_mask(label_map, radius=5):
     return mask
 
 
-def get_random_batch(filename_list, batch_size, image_size=192, time_window=1,
-                     data_augmentation=False,
+def get_random_batch(filename_list, batch_size, image_size=192, time_window=1, data_augmentation=False,
                      shift=0.0, rotate=0.0, scale=0.0, intensity=0.0, flip=False):
     # Randomly select batch_size images from filename_list
     n_file = len(filename_list)
     n_selected = 0
     images = []
     labels = []
-    masks = []
     while n_selected < batch_size:
         rand_index = random.randrange(n_file)
         if len(filename_list[rand_index]) == 2:
@@ -138,15 +125,15 @@ def get_random_batch(filename_list, batch_size, image_size=192, time_window=1,
 
             # Handle exceptions
             if image.shape != label.shape:
-                print('Error: mismatched size, image.shape = {0}, label.shape '
-                      '= {1}'.format(image.shape, label.shape))
+                print('Error: mismatched size, image.shape = {0}, label.shape = {1}'.format(
+                    image.shape, label.shape))
                 print('Skip {0}, {1}'.format(image_name, label_name))
                 continue
 
             if label_prop_name:
                 if image.shape != label_prop.shape:
-                    print('Error: mismatched size, image.shape = {0}, label_prop.shape '
-                          '= {1}'.format(image.shape, label.shape))
+                    print('Error: mismatched size, image.shape = {0}, label_prop.shape = {1}'.format(
+                        image.shape, label.shape))
                     print('Skip {0}, {1}'.format(image_name, label_name))
                     continue
 
@@ -174,12 +161,6 @@ def get_random_batch(filename_list, batch_size, image_size=192, time_window=1,
 
             # For each annotated time frame, get a time window centred at here
             for t in t_anno:
-                # t1 = t - time_window + 1
-                # t2 = t
-                # if t1 >= 0:
-                #     idx = np.arange(t1, t2 + 1)
-                # else:
-                #     idx = np.concatenate((np.arange(t1 + T, T), np.arange(0, t2 + 1)))
                 rad = int((time_window - 1) / 2)
                 t1 = t - rad
                 t2 = t + rad
@@ -203,8 +184,7 @@ def get_random_batch(filename_list, batch_size, image_size=192, time_window=1,
                 else:
                     # If there is no annotation across the time frames, simply
                     # copy the central time frame to other frames
-                    label_idx = np.repeat(np.expand_dims(label[:, :, 0, t], axis=0),
-                                          time_window, axis=0)
+                    label_idx = np.repeat(np.expand_dims(label[:, :, 0, t], axis=0), time_window, axis=0)
 
                 # Add the channel dimension
                 # image: TXYC
@@ -212,24 +192,11 @@ def get_random_batch(filename_list, batch_size, image_size=192, time_window=1,
 
                 # Perform data augmentation
                 if data_augmentation:
-                    image_idx, label_idx = data_augmenter(
-                        image_idx, label_idx, shift=shift, rotate=rotate,
-                        scale=scale, intensity=intensity, flip=flip)
-
-                # # mask: TXY
-                # mask_idx = np.zeros(label_idx.shape)
-                # for i in range(time_window):
-                #     if i == rad:
-                #         # We trust the central time frame which is manually annotated
-                #         mask_idx[i] = np.ones(mask_idx.shape[1:3])
-                #     else:
-                #         # For the other time frames, only trust a masked region,
-                #         # which is an eroded version of the manual annotation.
-                #         mask_idx[i] = get_trusted_mask(label_idx[rad])
+                    image_idx, label_idx = aortic_data_augmenter(image_idx, label_idx, shift=shift, rotate=rotate,
+                                                                 scale=scale, intensity=intensity, flip=flip)
 
                 images += [image_idx]
                 labels += [label_idx]
-                # masks += [mask_idx]
 
             # Increase the counter
             n_selected += 1
@@ -238,23 +205,14 @@ def get_random_batch(filename_list, batch_size, image_size=192, time_window=1,
     # Default shape:
     # images: NTXYC
     # labels: NTXY
-    # masks:  NTXY
     images = np.array(images, dtype=np.float32)
     labels = np.array(labels, dtype=np.int32)
-    # masks = np.array(masks, dtype=np.int8)
 
     if FLAGS.model == 'UNet':
         # images: NXYC
         # labels: NXY
-        # masks:  NXY
         images = np.reshape(images, (-1, images.shape[2], images.shape[3], images.shape[4]))
         labels = np.reshape(labels, (-1, labels.shape[2], labels.shape[3]))
-        # masks = np.reshape(masks, (-1, masks.shape[2], masks.shape[3]))
-
-    print('images.shape = ', images.shape)
-    print('labels.shape = ', labels.shape)
-    # print('masks.shape = ', masks.shape)
-    # return images, labels, masks
     return images, labels
 
 
@@ -272,7 +230,7 @@ def main(argv=None):
             # and add their file names to the list
             image_name = '{0}/{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
             label_name = '{0}/label_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
-            label_prop_name = '{0}/label_{1}_prop_suc_CP10.nii.gz'.format(data_dir, FLAGS.seq_name)
+            label_prop_name = '{0}/label_{1}_prop.nii.gz'.format(data_dir, FLAGS.seq_name)
             if os.path.exists(image_name) and os.path.exists(label_name):
                 if os.path.exists(label_prop_name):
                     data_list[k] += [[image_name, label_name, label_prop_name]]
@@ -292,7 +250,6 @@ def main(argv=None):
         # mask_pl:  NTXY
         image_pl = tf.placeholder(tf.float32, shape=[None, None, None, None, 1], name='image')
         label_pl = tf.placeholder(tf.int32, shape=[None, None, None, None], name='label')
-        # mask_pl = tf.placeholder(tf.int8, shape=[None, None, None, None], name='mask')
     else:
         print('Error: unknown model {0}.'.format(FLAGS.model))
         exit(0)
@@ -326,18 +283,14 @@ def main(argv=None):
     # Build the neural network model
     n_block = [2, 2, 2, 2, 2]
     if FLAGS.model == 'UNet':
-        loss, prob, pred = UNet_Model(image_pl, label_pl, n_class,
-                                      FLAGS.num_level, n_filter, n_block,
-                                      training_pl)
+        loss, prob, pred = UNet_Model(image_pl, label_pl, n_class, FLAGS.num_level,
+                                      n_filter, n_block, training_pl)
         time_window = 1
         label_fr = label_pl
         pred_fr = pred
     elif FLAGS.model == 'UNet-LSTM':
-        # TODO: can we use tensor for lstm_input_shape, instead of a fixed number
         lstm_input_shape = [FLAGS.image_size, FLAGS.image_size, n_filter[0]]
-        # time_window = FLAGS.time_window
         # The unrolled time window is determined by the weighting window radius
-        # time_window = FLAGS.weight_R * 2 + 1
         time_window = FLAGS.weight_R * 2 - 1
         loss, prob, pred = UNet_LSTM_Model(image_pl, label_pl, n_class,
                                            FLAGS.num_level, n_filter, n_block,
@@ -376,13 +329,11 @@ def main(argv=None):
     if FLAGS.reduce_lr_after:
         boundaries = [int(x) for x in FLAGS.reduce_lr_after]
         boundaries = sorted(boundaries)
-
         values = []
         val = FLAGS.learning_rate
         for i in range(len(boundaries) + 1):
             values += [val]
             val *= 0.1
-
         learning_rate = tf.train.piecewise_constant(global_step, boundaries, values)
     else:
         learning_rate = FLAGS.learning_rate
@@ -412,8 +363,7 @@ def main(argv=None):
 
     # Model name and directory
     model_name = '{0}_{1}_level{2}_filter{3}_{4}_batch{5}_iter{6}_lr{7}'.format(
-        FLAGS.model, FLAGS.seq_name, FLAGS.num_level, n_filter[0],
-        ''.join([str(x) for x in n_block]),
+        FLAGS.model, FLAGS.seq_name, FLAGS.num_level, n_filter[0], ''.join([str(x) for x in n_block]),
         FLAGS.train_batch_size, FLAGS.train_iteration, FLAGS.learning_rate)
     if FLAGS.z_score:
         model_name += '_zscore'
@@ -428,10 +378,7 @@ def main(argv=None):
         if FLAGS.from_scratch:
             model_name += '_scratch'
     if FLAGS.model == 'Temporal-UNet':
-        model_name += '_tw{0}_wR{1}_wr{2}'.format(time_window,
-                                                  FLAGS.weight_R, FLAGS.weight_r)
-    if FLAGS.trial > 1:
-        model_name += '_trial{0}'.format(FLAGS.trial)
+        model_name += '_tw{0}_wR{1}_wr{2}'.format(time_window, FLAGS.weight_R, FLAGS.weight_r)
     print(model_name)
 
     model_dir = os.path.join(FLAGS.checkpoint_dir, model_name)
@@ -444,19 +391,14 @@ def main(argv=None):
         start_time = time.time()
 
         # Create a saver
-        saver = tf.train.Saver(max_to_keep=50)
+        saver = tf.train.Saver(max_to_keep=20)
 
         # Summary writer
         summary_dir = os.path.join(FLAGS.log_dir, model_name)
         if os.path.exists(summary_dir):
-            # c = input('A summary_dir already exists. Delete (y/n)?')
-            # if c == 'y':
             os.system('rm -rf {0}'.format(summary_dir))
-            # exit(0)
-        train_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'train'),
-                                             graph=sess.graph)
-        val_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'validation'),
-                                           graph=sess.graph)
+        train_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'train'), graph=sess.graph)
+        val_writer = tf.summary.FileWriter(os.path.join(summary_dir, 'validation'), graph=sess.graph)
 
         # Initialise variables
         sess.run(tf.global_variables_initializer())
@@ -464,11 +406,10 @@ def main(argv=None):
         # Import the pre-trained U-Net weights if not training from scratch
         if FLAGS.model == 'UNet-LSTM' and not FLAGS.from_scratch:
             # Important, restore all the GLOBAL_VARIABLES here.
-            # If using TRAINABLE_VARIABLES,the moving_mean and moving_variance
+            # If using TRAINABLE_VARIABLES, the moving_mean and moving_variance for
             # batch_normalisation will not be included.
             var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'UNet/')
             print('Restore pre-trained UNet weights...')
-            print(var_list)
             saver2 = tf.train.Saver(var_list)
             saver2.restore(sess, '{0}'.format(FLAGS.model_path))
 
@@ -483,13 +424,12 @@ def main(argv=None):
                                               image_size=FLAGS.image_size,
                                               time_window=time_window,
                                               data_augmentation=True,
-                                              shift=10, rotate=10, scale=0.1,
+                                              shift=0, rotate=10, scale=0.1,
                                               intensity=0, flip=False)
 
             # Stochastic optimisation using this batch
-            _, train_loss, train_acc, lr = sess.run(
-                [train_op, loss, accuracy, learning_rate],
-                {image_pl: images, label_pl: labels, training_pl: True})
+            _, train_loss, train_acc, lr = sess.run([train_op, loss, accuracy, learning_rate],
+                                                    {image_pl: images, label_pl: labels, training_pl: True})
 
             summary = tf.Summary()
             summary.value.add(tag='loss', simple_value=train_loss)
@@ -506,9 +446,8 @@ def main(argv=None):
                                                   time_window=time_window,
                                                   data_augmentation=False)
 
-                val_loss, val_acc, val_dice_aa, val_dice_da = sess.run(
-                    [loss, accuracy, dice_aa, dice_da],
-                    {image_pl: images, label_pl: labels, training_pl: False})
+                val_loss, val_acc, val_dice_aa, val_dice_da = sess.run([loss, accuracy, dice_aa, dice_da],
+                                                                       {image_pl: images, label_pl: labels, training_pl: False})
 
                 summary = tf.Summary()
                 summary.value.add(tag='loss', simple_value=val_loss)
@@ -518,8 +457,8 @@ def main(argv=None):
                 val_writer.add_summary(summary, iteration)
 
                 # Print the results for this iteration
-                print('Iteration {} of {} took {:.3f}s'.format(
-                    iteration, FLAGS.train_iteration, time.time() - start_time_iter))
+                print('Iteration {} of {} took {:.3f}s'.format(iteration, FLAGS.train_iteration,
+                                                               time.time() - start_time_iter))
                 print('  training loss:\t\t{:.6f}'.format(train_loss))
                 print('  training accuracy:\t\t{:.2f}%'.format(train_acc * 100))
                 print('  validation loss: \t\t{:.6f}'.format(val_loss))
@@ -534,11 +473,11 @@ def main(argv=None):
                 print('  training accuracy:\t\t{:.2f}%'.format(train_acc * 100))
 
             # Save models after every 1000 iterations
-            # 1 epoch = 400 subjects / 5 subject per iteration = 80 iterations
             if iteration % 1000 == 0:
-                saver.save(sess, save_path=os.path.join(model_dir, '{0}.ckpt'.format(model_name)), global_step=iteration)
+                saver.save(sess, save_path=os.path.join(model_dir, '{0}.ckpt'.format(model_name)),
+                           global_step=iteration)
 
-        # Close the logger and summary writers
+        # Close the summary writers
         train_writer.close()
         val_writer.close()
         print('Training took {:.3f}s in total.\n'.format(time.time() - start_time))

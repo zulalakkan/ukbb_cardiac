@@ -57,6 +57,16 @@ def crop_image(image, cx, cy, size):
     return crop
 
 
+def normalise_intensity(image, thres_roi=10.0):
+    """ Normalise the image intensity by the mean and standard deviation """
+    val_l = np.percentile(image, thres_roi)
+    roi = (image >= val_l)
+    mu, sigma = np.mean(image[roi]), np.std(image[roi])
+    eps = 1e-6
+    image2 = (image - mu) / (sigma + eps)
+    return image2
+
+
 def rescale_intensity(image, thres=(1.0, 99.0)):
     """ Rescale the image intensity to the range of [0, 1] """
     val_l, val_h = np.percentile(image, thres)
@@ -95,6 +105,54 @@ def data_augmenter(image, label, shift, rotate, scale, intensity, flip):
         # Apply the affine transformation (rotation + scale + shift) to the label map
         label2[i, :, :] = ndimage.interpolation.affine_transform(label[i, :, :],
                                                                  M[:, :2], M[:, 2], order=0)
+
+        # Apply intensity variation
+        image2[i] *= intensity_val
+
+        # Apply random horizontal or vertical flipping
+        if flip:
+            if np.random.uniform() >= 0.5:
+                image2[i] = image2[i, ::-1, :, :]
+                label2[i] = label2[i, ::-1, :]
+            else:
+                image2[i] = image2[i, :, ::-1, :]
+                label2[i] = label2[i, :, ::-1]
+    return image2, label2
+
+
+def aortic_data_augmenter(image, label, shift, rotate, scale, intensity, flip):
+    """
+        Online data augmentation
+        Perform affine transformation on image and label,
+
+        image: NXYC
+        label: NXY
+    """
+    image2 = np.zeros(image.shape, dtype=np.float32)
+    label2 = np.zeros(label.shape, dtype=np.int32)
+
+    # For N image. which come come from the same subject in the LSTM model,
+    # generate the same random affine transformation parameters.
+    shift_val = [np.clip(np.random.normal(), -3, 3) * shift,
+                 np.clip(np.random.normal(), -3, 3) * shift]
+    rotate_val = np.clip(np.random.normal(), -3, 3) * rotate
+    scale_val = 1 + np.clip(np.random.normal(), -3, 3) * scale
+    intensity_val = 1 + np.clip(np.random.normal(), -3, 3) * intensity
+
+    # The affine transformation (rotation + scale + shift)
+    row, col = image.shape[1:3]
+    M = cv2.getRotationMatrix2D(
+        (row / 2, col / 2), rotate_val, 1.0 / scale_val)
+    M[:, 2] += shift_val
+
+    # Apply the transformation to the image
+    for i in range(image.shape[0]):
+        for c in range(image.shape[3]):
+            image2[i, :, :, c] = ndimage.interpolation.affine_transform(
+                image[i, :, :, c], M[:, :2], M[:, 2], order=1)
+
+        label2[i, :, :] = ndimage.interpolation.affine_transform(
+            label[i, :, :], M[:, :2], M[:, 2], order=0)
 
         # Apply intensity variation
         image2[i] *= intensity_val

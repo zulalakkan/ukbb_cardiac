@@ -19,8 +19,34 @@ import numpy as np
 def conv2d_bn_relu(x, filters, training, kernel_size=3, strides=1):
     """ Basic Conv + BN + ReLU unit """
     x_conv = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
-                              strides=strides,
-                              padding='same', use_bias=False)
+                              strides=strides, padding='same', use_bias=False)
+    x_bn = tf.layers.batch_normalization(x_conv, training=training)
+    x_relu = tf.nn.relu(x_bn)
+    return x_relu
+
+
+def conv2d_transpose_bn_relu(x, filters, training, kernel_size=3, strides=1):
+    """ Basic Conv2D_Transpose + BN + ReLU unit """
+    x_conv = tf.layers.conv2d_transpose(x, filters=filters, kernel_size=kernel_size,
+                                        strides=strides, padding='same', use_bias=False)
+    x_bn = tf.layers.batch_normalization(x_conv, training=training)
+    x_relu = tf.nn.relu(x_bn)
+    return x_relu
+
+
+def conv3d_bn_relu(x, filters, training, kernel_size=3, strides=1):
+    """ Basic Conv3D + BN + ReLU unit """
+    x_conv = tf.layers.conv3d(x, filters=filters, kernel_size=kernel_size,
+                              strides=strides, padding='same', use_bias=False)
+    x_bn = tf.layers.batch_normalization(x_conv, training=training)
+    x_relu = tf.nn.relu(x_bn)
+    return x_relu
+
+
+def conv3d_transpose_bn_relu(x, filters, training, kernel_size=3, strides=1):
+    """ Basic Conv3D_Transpose + BN + ReLU unit """
+    x_conv = tf.layers.conv3d_transpose(x, filters=filters, kernel_size=kernel_size,
+                                        strides=strides, padding='same', use_bias=False)
     x_bn = tf.layers.batch_normalization(x_conv, training=training)
     x_relu = tf.nn.relu(x_bn)
     return x_relu
@@ -28,23 +54,19 @@ def conv2d_bn_relu(x, filters, training, kernel_size=3, strides=1):
 
 def residual_unit(x, filters, training, strides=1):
     """
-        Basic residual learning unit, which implements the unit illustrated
-        by Figure 1(b) in He et al. Identity Mappings in Deep Residual
-        Networks, ECCV 2016. https://arxiv.org/pdf/1603.05027
+        Basic residual learning unit, which implements the unit illustrated by Figure 1(b) in
+        He et al. Identity Mappings in Deep Residual Networks, ECCV 2016.
+        https://arxiv.org/pdf/1603.05027
         """
     orig_x = x
     with tf.name_scope('sub1'):
         x = tf.layers.batch_normalization(x, training=training)
         x = tf.nn.relu(x)
-        x = tf.layers.conv2d(x, filters=filters, kernel_size=3,
-                             strides=strides,
-                             padding='same', use_bias=False)
+        x = tf.layers.conv2d(x, filters=filters, kernel_size=3, strides=strides, padding='same', use_bias=False)
     with tf.name_scope('sub2'):
         x = tf.layers.batch_normalization(x, training=training)
         x = tf.nn.relu(x)
-        x = tf.layers.conv2d(x, filters=filters, kernel_size=3,
-                             strides=1,
-                             padding='same', use_bias=False)
+        x = tf.layers.conv2d(x, filters=filters, kernel_size=3, strides=1, padding='same', use_bias=False)
     # Use projection for increased dimension and identity mapping
     # for the same dimension i.e. option B in
     # He at al. Deep Residual Learning for Image Recognition, CVPR 2016.
@@ -53,8 +75,7 @@ def residual_unit(x, filters, training, strides=1):
         if orig_x.shape[3] == x.shape[3] and strides == 1:
             shortcut = orig_x
         else:
-            shortcut = tf.layers.conv2d(orig_x, filters=filters,
-                                        kernel_size=1, strides=strides,
+            shortcut = tf.layers.conv2d(orig_x, filters=filters, kernel_size=1, strides=strides,
                                         padding='same', use_bias=False)
         x = shortcut + x
     return x
@@ -74,27 +95,20 @@ def bottleneck_unit(x, filters, training, strides=1):
     with tf.name_scope('sub1'):
         x = tf.layers.batch_normalization(x, training=training)
         x = tf.nn.relu(x)
-        x = tf.layers.conv2d(x, filters=filters / 4, kernel_size=1,
-                             strides=strides,
-                             padding='same', use_bias=False)
+        x = tf.layers.conv2d(x, filters=filters / 4, kernel_size=1, strides=strides, padding='same', use_bias=False)
     with tf.name_scope('sub2'):
         x = tf.layers.batch_normalization(x, training=training)
         x = tf.nn.relu(x)
-        x = tf.layers.conv2d(x, filters=filters / 4, kernel_size=3,
-                             strides=1,
-                             padding='same', use_bias=False)
+        x = tf.layers.conv2d(x, filters=filters / 4, kernel_size=3, strides=1, padding='same', use_bias=False)
     with tf.name_scope('sub3'):
         x = tf.layers.batch_normalization(x, training=training)
         x = tf.nn.relu(x)
-        x = tf.layers.conv2d(x, filters=filters, kernel_size=1,
-                             strides=1,
-                             padding='same', use_bias=False)
+        x = tf.layers.conv2d(x, filters=filters, kernel_size=1, strides=1, padding='same', use_bias=False)
     with tf.name_scope('add'):
         if orig_x.shape[3] == x.shape[3] and strides == 1:
             shortcut = orig_x
         else:
-            shortcut = tf.layers.conv2d(orig_x, filters=filters,
-                                        kernel_size=1, strides=strides,
+            shortcut = tf.layers.conv2d(orig_x, filters=filters, kernel_size=1, strides=strides,
                                         padding='same', use_bias=False)
         x = shortcut + x
     return x
@@ -124,10 +138,7 @@ def linear_2d(sz):
 def transpose_upsample2d(x, factor, constant=True):
     """ 2D upsampling operator using transposed convolution """
     x_shape = tf.shape(x)
-    output_shape = tf.stack([x_shape[0],
-                             x_shape[1] * factor,
-                             x_shape[2] * factor,
-                             x.shape[3].value])
+    output_shape = tf.stack([x_shape[0], x_shape[1] * factor, x_shape[2] * factor, x.shape[3].value])
 
     # The bilinear interpolation weight for the upsampling filter
     sz = factor * 2 - 1
@@ -150,13 +161,9 @@ def transpose_upsample2d(x, factor, constant=True):
     # A workaround is to reshape this tensor to the expected shape size.
     # Refer to https://github.com/tensorflow/tensorflow/issues/833#issuecomment-278016198
     x_up = tf.nn.conv2d_transpose(x, filter=filt, output_shape=output_shape,
-                                  strides=[1, factor, factor, 1],
-                                  padding='SAME')
+                                  strides=[1, factor, factor, 1], padding='SAME')
     x_out = tf.reshape(x_up,
-                       (x_shape[0],
-                        x_shape[1] * factor,
-                        x_shape[2] * factor,
-                        x.shape[3].value))
+                       (x_shape[0], x_shape[1] * factor, x_shape[2] * factor, x.shape[3].value))
     return x_out
 
 
@@ -176,11 +183,9 @@ def build_FCN(image, n_class, n_level, n_filter, n_block, training, same_dim=32,
             # by a factor of 2。
             strides = 1 if l == 0 else 2
             # For each resolution level, perform n_block[l] times convolutions
-            x = conv2d_bn_relu(x, filters=n_filter[l], training=training,
-                               kernel_size=3, strides=strides)
+            x = conv2d_bn_relu(x, filters=n_filter[l], training=training, kernel_size=3, strides=strides)
             for i in range(1, n_block[l]):
-                x = conv2d_bn_relu(x, filters=n_filter[l], training=training,
-                                   kernel_size=3)
+                x = conv2d_bn_relu(x, filters=n_filter[l], training=training, kernel_size=3)
             net['conv{0}'.format(l)] = x
 
     # Before upsampling back to the original resolution level, map all the
@@ -195,10 +200,8 @@ def build_FCN(image, n_class, n_level, n_filter, n_block, training, same_dim=32,
     #   used for gradient calculation.
     with tf.name_scope('same_dim'):
         for l in range(0, n_level):
-            net['conv{0}_same_dim'.format(l)] = conv2d_bn_relu(net['conv{0}'.format(l)],
-                                                               filters=same_dim,
-                                                               training=training,
-                                                               kernel_size=1)
+            net['conv{0}_same_dim'.format(l)] = conv2d_bn_relu(net['conv{0}'.format(l)], filters=same_dim,
+                                                               training=training, kernel_size=1)
 
     # Upsample the feature maps at each resolution level to the original resolution
     with tf.name_scope('up'):
@@ -251,11 +254,9 @@ def build_ResNet(image, n_class, n_level, n_filter, n_block, training,
     for l in range(0, 2):
         with tf.name_scope('conv{0}'.format(l)):
             strides = 1 if l == 0 else 2
-            x = conv2d_bn_relu(x, filters=n_filter[l], training=training,
-                               kernel_size=3, strides=strides)
+            x = conv2d_bn_relu(x, filters=n_filter[l], training=training, kernel_size=3, strides=strides)
             for i in range(1, n_block[l]):
-                x = conv2d_bn_relu(x, filters=n_filter[l], training=training,
-                                   kernel_size=3)
+                x = conv2d_bn_relu(x, filters=n_filter[l], training=training, kernel_size=3)
             net['conv{0}'.format(l)] = x
 
     for l in range(2, n_level):
@@ -269,10 +270,8 @@ def build_ResNet(image, n_class, n_level, n_filter, n_block, training,
     # to have same_dim dimensions.
     with tf.name_scope('same_dim'):
         for l in range(0, n_level):
-            net['conv{0}_same_dim'.format(l)] = conv2d_bn_relu(net['conv{0}'.format(l)],
-                                                               training=training,
-                                                               filters=same_dim,
-                                                               kernel_size=1)
+            net['conv{0}_same_dim'.format(l)] = conv2d_bn_relu(net['conv{0}'.format(l)], training=training,
+                                                               filters=same_dim, kernel_size=1)
 
     # Upsample the feature maps at each resolution level to the original resolution
     with tf.name_scope('up'):

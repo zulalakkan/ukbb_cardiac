@@ -17,31 +17,22 @@ import time
 import math
 import numpy as np
 import nibabel as nib
-import pandas as pd
 import tensorflow as tf
-from image_utils import *
+from ukbb_cardiac.common.image_utils import *
 
 
 """ Deployment parameters """
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('time_step', 1,
                             'Time step during deployment of LSTM.')
-tf.app.flags._global_parser.add_argument('--seq_name', choices=['ao'],
-                                         default='ao', help="Sequence name.")
-tf.app.flags._global_parser.add_argument('--model',
-                                         choices=['UNet',
-                                                  'UNet-LSTM',
-                                                  'Temporal-UNet'],
-                                         default='UNet-LSTM',
-                                         help='Model name.')
-tf.app.flags.DEFINE_string('test_dir',
+tf.app.flags.DEFINE_enum('seq_name', 'ao', ['ao'],
+                         'Sequence name.')
+tf.app.flags.DEFINE_enum('model', 'UNet-LSTM', ['UNet', 'UNet-LSTM', 'Temporal-UNet'],
+                         'Model name.')
+tf.app.flags.DEFINE_string('data_dir',
                            '/vol/medic02/users/wbai/data/cardiac_atlas/Biobank_ao/validation',
                            'Path to the test set directory, under which images '
                            'are organised in subdirectories for each subject.')
-tf.app.flags.DEFINE_string('dest_dir',
-                           '/vol/medic02/users/wbai/data/cardiac_atlas/Biobank_ao/validation_seg',
-                           'Path to the destination directory, where the '
-                           'segmentations will be saved.')
 tf.app.flags.DEFINE_string('model_path',
                            '/vol/biomedic2/wbai/ukbb_cardiac/UKBB_18545/model/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint.ckpt-20000',
                            'Path to the saved trained model.')
@@ -52,18 +43,10 @@ tf.app.flags.DEFINE_boolean('save_seg', True,
 tf.app.flags.DEFINE_boolean('z_score', True,
                             'Normalise the image intensity to z-score. '
                             'Otherwise, rescale the intensity.')
-tf.app.flags.DEFINE_boolean('eval_seg', False,
-                            'Evaluate segmentation accuracy.')
-tf.app.flags.DEFINE_boolean('ED_ES', False,
-                            'Save segmentations at defined ED/ES time frames.')
-# tf.app.flags.DEFINE_boolean('linear_weight', True,
-#                             'Linear weight for accumulating the probability maps. '
-#                             'Otherwise, uniform weight.')
 tf.app.flags.DEFINE_integer('weight_R', 5,
                             'Radius of the weighting window.')
 tf.app.flags.DEFINE_float('weight_r', 0.1,
-                          'Power of weight for the seq2seq loss. '
-                          '0: uniform; 1: linear; 2: square.')
+                          'Power of weight for the seq2seq loss. 0: uniform; 1: linear; 2: square.')
 
 
 if __name__ == '__main__':
@@ -73,38 +56,17 @@ if __name__ == '__main__':
         # Import the computation graph and restore the variable values
         saver = tf.train.import_meta_graph('{0}.meta'.format(FLAGS.model_path))
         saver.restore(sess, '{0}'.format(FLAGS.model_path))
-        model_name = os.path.basename(FLAGS.model_path)
-        if FLAGS.model == 'UNet-LSTM':
-            model_name += '_ts{0}'.format(FLAGS.time_step)
-            model_name += '_tile_wR{0}_wr{1}'.format(FLAGS.weight_R, FLAGS.weight_r)
-            # if FLAGS.linear_weight:
-            #     model_name += '_linear_tile'
-            # else:
-            #     model_name += '_uniform_tile'
-        elif FLAGS.model == 'Temporal-UNet':
-            model_name += '_ts{0}'.format(FLAGS.time_step)
-            model_name += '_tile_wR{0}_wr{1}'.format(FLAGS.weight_R, FLAGS.weight_r)
 
         print('Start evaluating on the test set ...')
         start_time = time.time()
 
         # Process each subject subdirectory
-        data_list = sorted(os.listdir(FLAGS.test_dir))
+        data_list = sorted(os.listdir(FLAGS.data_dir))
         processed_list = []
         table = []
-        table_dice = []
         for data in data_list:
             print(data)
-            data_dir = os.path.join(FLAGS.test_dir, data)
-
-            if os.path.exists(os.path.join(FLAGS.dest_dir, data, 'seg_{0}.nii.gz'.format(FLAGS.seq_name))):
-                print('Skip.')
-                continue
-
-            # if os.path.exists(os.path.join(FLAGS.dest_dir, model_name,
-            #                                data, 'seg_{0}.nii.gz'.format(FLAGS.seq_name))):
-            #     print('Skip.')
-            #     continue
+            data_dir = os.path.join(FLAGS.data_dir, data)
 
             if FLAGS.process_seq:
                 # Process the temporal sequence
@@ -157,8 +119,7 @@ if __name__ == '__main__':
                         # Evaluate the network
                         # prob_fr: NXYC
                         prob_fr = sess.run('prob:0',
-                                           feed_dict={'image:0': image_fr,
-                                                      'training:0': False})
+                                           feed_dict={'image:0': image_fr, 'training:0': False})
 
                         # Transpose and crop to recover the original size
                         # prob_fr: XYNC
@@ -167,7 +128,6 @@ if __name__ == '__main__':
                         prob[:, :, :, t, :] = prob_fr
                 elif FLAGS.model == 'UNet-LSTM' or FLAGS.model == 'Temporal-UNet':
                     time_window = FLAGS.weight_R * 2 - 1
-                    # time_window = FLAGS.weight_R * 2 + 1
                     rad = int((time_window - 1) / 2)
                     weight = np.zeros((1, 1, 1, T, 1))
 
@@ -203,17 +163,13 @@ if __name__ == '__main__':
                         image_idx = np.expand_dims(image_idx, axis=-1)
 
                         # Evaluate the network
-                        # TODO: can we deploy the LSTM model more efficiently
-                        # by utilising the state variable?
-                        # Currently, we have to feed all the time frames in
-                        # the time window and we can not just feed one time
-                        # frame, because the LSTM is an unrolled model in the
-                        # dataflow graph. It needs all the input from the
-                        # time window.
+                        # Curious: can we deploy the LSTM model more efficiently by utilising the state variable?
+                        # Currently, we have to feed all the time frames in the time window and we can not just
+                        # feed one time frame, because the LSTM is an unrolled model in the dataflow graph.
+                        # It needs all the input from the time window.
                         # prob_idx: NTXYC
                         prob_idx = sess.run('prob:0',
-                                            feed_dict={'image:0': image_idx,
-                                                       'training:0': False})
+                                            feed_dict={'image:0': image_idx, 'training:0': False})
 
                         # Transpose and crop the segmentation to recover the original size
                         # prob_idx: XYNTC
@@ -235,47 +191,9 @@ if __name__ == '__main__':
                 # Save the segmentation
                 if FLAGS.save_seg:
                     print('  Saving segmentation ...')
-                    # dest_data_dir = os.path.join(FLAGS.dest_dir, model_name, data)
-                    dest_data_dir = os.path.join(FLAGS.dest_dir, data)
-                    if not os.path.exists(dest_data_dir):
-                        os.makedirs(dest_data_dir)
-
-                    # # Create symbolic links for original images and label maps
-                    # os.system('ln -sf {0}/{1}.nii.gz {2}/{1}.nii.gz'.format(
-                    #     data_dir, FLAGS.seq_name, dest_data_dir))
-                    # if os.path.exists('{0}/label_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)):
-                    #     os.system('ln -sf {0}/label_{1}.nii.gz {2}/label_{1}.nii.gz'.format(
-                    #         data_dir, FLAGS.seq_name, dest_data_dir))
-
                     nim2 = nib.Nifti1Image(pred, nim.affine)
                     nim2.header['pixdim'] = nim.header['pixdim']
-                    nib.save(nim2, '{0}/seg_{1}.nii.gz'.format(dest_data_dir, FLAGS.seq_name))
-
-                    if FLAGS.ED_ES:
-                        image = nib.load('{0}/{1}.nii.gz'.format(data_dir, FLAGS.seq_name)).get_data()
-                        for fr in ['ED', 'ES']:
-                            image_fr = nib.load('{0}/{1}_{2}.nii.gz'.format(
-                                data_dir, FLAGS.seq_name, fr)).get_data()
-
-                            # Infer the time frame index
-                            if fr == 'ED':
-                                k = 0
-                            else:
-                                diff = np.zeros(T)
-                                for t in range(T):
-                                    diff[t] = np.sum(np.abs(image[:, :, :, t] - image_fr))
-                                k = np.argmin(diff)
-                            print('  ', fr, k)
-
-                            nim2 = nib.Nifti1Image(pred[:, :, :, k], nim.affine)
-                            nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(
-                                dest_data_dir, FLAGS.seq_name, fr))
-
-                            # Create symbolic links for original images and label maps
-                            os.system('ln -sf {0}/{1}_{2}.nii.gz {3}/{1}_{2}.nii.gz'.format(
-                                data_dir, FLAGS.seq_name, fr, dest_data_dir))
-                            os.system('ln -sf {0}/label_{1}_{2}.nii.gz {3}/label_{1}_{2}.nii.gz'.format(
-                                data_dir, FLAGS.seq_name, fr, dest_data_dir))
+                    nib.save(nim2, '{0}/seg_{1}.nii.gz'.format(data_dir, FLAGS.seq_name))
 
                 seg_time = time.time() - start_seg_time
                 print('  Segmentation time = {:3f}s'.format(seg_time))
@@ -291,8 +209,7 @@ if __name__ == '__main__':
                 image_ES_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, 'ES')
                 if not os.path.exists(image_ED_name) or not os.path.exists(image_ES_name):
                     print('  Directory {0} does not contain an image with file name {1} or {2}. '
-                          'Skip.'.format(data_dir, os.path.basename(image_ED_name),
-                                          os.path.basename(image_ES_name)))
+                          'Skip.'.format(data_dir, os.path.basename(image_ED_name), os.path.basename(image_ES_name)))
                     continue
 
                 measure = {}
@@ -333,8 +250,7 @@ if __name__ == '__main__':
                     # Evaluate the network
                     # pred: NXY
                     prob, pred = sess.run(['prob:0', 'pred:0'],
-                                          feed_dict={'image:0': image,
-                                                     'training:0': False})
+                                          feed_dict={'image:0': image, 'training:0': False})
 
                     # Transpose and crop the segmentation to recover the original size
                     pred = np.transpose(pred, axes=(1, 2, 0))
@@ -346,34 +262,11 @@ if __name__ == '__main__':
                     # Save the segmentation
                     if FLAGS.save_seg:
                         print('  Saving segmentation ...')
-                        dest_data_dir = os.path.join(FLAGS.dest_dir, model_name, data)
-                        # dest_data_dir = os.path.join(FLAGS.dest_dir, data)
-                        if not os.path.exists(dest_data_dir):
-                            os.makedirs(dest_data_dir)
-
-                        # Create symbolic links for original images and label maps
-                        os.system('ln -sf {0}/{1}_{2}.nii.gz {3}/{1}_{2}.nii.gz'.format(
-                            data_dir, FLAGS.seq_name, fr, dest_data_dir))
-                        os.system('ln -sf {0}/label_{1}_{2}.nii.gz {3}/label_{1}_{2}.nii.gz'.format(
-                            data_dir, FLAGS.seq_name, fr, dest_data_dir))
-
                         nim2 = nib.Nifti1Image(pred, nim.affine)
                         nim2.header['pixdim'] = nim.header['pixdim']
-                        nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(
-                            dest_data_dir, FLAGS.seq_name, fr))
-
-                if FLAGS.save_seg:
-                    # Create symbolic links for original images and label maps
-                    os.system('ln -sf {0}/{1}.nii.gz {2}/{1}.nii.gz'.format(
-                        data_dir, FLAGS.seq_name, dest_data_dir))
+                        nib.save(nim2, '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
 
                 processed_list += [data]
-
-        if FLAGS.eval_seg:
-            # os.system('python3 evaluate_seg_perf.py --eval_dir {0}'.format(
-            #     os.path.join(FLAGS.dest_dir, model_name)))
-            os.system('python3 evaluate_seg_perf.py --eval_dir {0}'.format(
-                os.path.join(FLAGS.dest_dir)))
 
         process_time = time.time() - start_time
         print('Including image I/O, CUDA resource allocation, '
