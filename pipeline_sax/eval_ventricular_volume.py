@@ -30,7 +30,7 @@ if __name__ == '__main__':
     table = []
     processed_list = []
     for data in data_list:
-        data_dir = os.path.join(data_path, str(data))
+        data_dir = os.path.join(data_path, data)
         image_name = '{0}/sa.nii.gz'.format(data_dir)
         seg_name = '{0}/seg_sa.nii.gz'.format(data_dir)
 

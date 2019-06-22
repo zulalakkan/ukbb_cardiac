@@ -30,7 +30,7 @@ tf.app.flags.DEFINE_string('data_dir', '/vol/bitbucket/wbai/own_work/ukbb_cardia
                            'Path to the data set directory, under which images '
                            'are organised in subdirectories for each subject.')
 tf.app.flags.DEFINE_string('model_path',
-                           '/vol/biomedic2/wbai/tmp/github/model/FCN_sa.ckpt-50000',
+                           '',
                            'Path to the saved trained model.')
 tf.app.flags.DEFINE_boolean('process_seq', True,
                             'Process a time sequence of images.')

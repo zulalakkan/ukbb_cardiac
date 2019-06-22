@@ -33,7 +33,7 @@ if __name__ == '__main__':
     table = []
     processed_list = []
     for data in data_list:
-        data_dir = os.path.join(data_path, str(data))
+        data_dir = os.path.join(data_path, data)
         seg_la_2ch_name = '{0}/seg_la_2ch.nii.gz'.format(data_dir)
         seg_la_4ch_name = '{0}/seg_la_4ch.nii.gz'.format(data_dir)
         sa_name = '{0}/sa.nii.gz'.format(data_dir)

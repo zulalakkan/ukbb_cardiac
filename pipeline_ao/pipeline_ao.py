@@ -17,22 +17,12 @@ working_dir = os.getcwd()
 
 
 # Deploy the segmentation network
-os.system('python3 {0}/../common/deploy_network.py --seq_name sa '
+os.system('python3 {0}/../common/deploy_network_ao.py --seq_name ao '
           '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--model_path /homes/wbai/public_html/data/ukbb_cardiac/trained_model/FCN_sa'.format(working_dir))
+          '--model_path /vol/biomedic2/wbai/ukbb_cardiac/UKBB_18545/model/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint/UNet-LSTM_ao_level5_filter16_22222_batch1_iter20000_lr0.001_zscore_tw9_h16_bidir_seq2seq_wR5_wr0.1_joint.ckpt-20000'.format(working_dir))
 
-# Evaluate ventricular volumes
-os.system('python3 {0}/eval_ventricular_volume.py '
-          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--output_csv table_ventricular_volume.csv'.format(working_dir))
-
-# Evaluate wall thickness
-os.system('python3 {0}/eval_wall_thickness.py '
-          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--output_csv table_wall_thickness.csv'.format(working_dir))
-
-# Evaluate strain values
-os.system('python3 {0}/eval_strain_sax.py '
-          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo '
-          '--par_dir /vol/biomedic2/wbai/git/ukbb_cardiac/par '
-          '--output_csv table_strain_sax.csv'.format(working_dir))
+# Evaluate aortic distensibility
+os.system('python3 {0}/eval_aortic_area.py '
+          '--data_dir /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo/data '
+          '--pressure_csv /vol/bitbucket/wbai/own_work/ukbb_cardiac_demo/csv/blood_pressure_info.csv '
+          '--output_csv table_aortic_area.csv'.format(working_dir))
