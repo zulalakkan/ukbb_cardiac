@@ -4,9 +4,9 @@
 
 * pre-processing the original DICOM images, converting them into NIfTI format, which is more convenient for image analysis;
 * training fully convolutional networks for short-axis, long-axis and aortic CMR image segmentation;
-* deploying the networks to new images;
-* evaluating cardiac imaging phenotypes from the segmentation;
-* phenome-wide association between imaging phenotypes and non-imaging phenotypes.
+* deploying the networks to segment images;
+* evaluating cardiac imaging phenotypes from the segmentations;
+* performing phenome-wide association between imaging phenotypes and non-imaging phenotypes.
 
 **Note** This repository only contains the code, not the imaging data. To know more about how to access the UK Biobank imaging data, please go to the [UK Biobank Imaging Study](http://imaging.ukbiobank.ac.uk/) website. Researchers can [apply](http://www.ukbiobank.ac.uk/register-apply/) to use the UK Biobank data resource for health-related research in the public interest.
 
@@ -16,7 +16,7 @@ The toolbox is developed using [Python](https://www.python.org) programming lang
 
 The toolbox depends on some external libraries which need to be installed, including:
 
-* [tensorflow](https://www.tensorflow.org) for deep learning;
+* tensorflow for deep learning;
 * numpy and scipy for numerical computation;
 * pandas and python-dateutil for handling spreadsheet;
 * pydicom, SimpleITK for handling dicom images
@@ -28,11 +28,16 @@ The most convenient way to install these libraries is to use pip3 (or pip for Py
 pip3 install tensorflow-gpu numpy scipy pandas python-dateutil pydicom SimpleITK nibabel opencv-python
 ```
 
-The toolbox can also evaluate cardiac strain on short-axis and long-axis images. To enable strain calculation, [MIRTK](https://github.com/BioMedIA/MIRTK) needs to be installed. MIRTK is a medical image registration toolbox, which is used for performing cardiac motion tracking on short-axis and long-axis images. However, MIRTK is not a mandatory option for using this toolbox. Even without MIRTK, the toolbox can still evaluate most of the cardiac imaging phenotypes.
+The toolbox also evaluates cardiac strain on short-axis and long-axis images. To enable strain calculation, [MIRTK](https://github.com/BioMedIA/MIRTK) needs to be installed. MIRTK is a medical image registration toolbox, which is used for performing cardiac motion tracking on short-axis and long-axis images. However, MIRTK is not a mandatory option for using this toolbox. Without MIRTK, the toolbox will still evaluate most of the cardiac imaging phenotypes, other than strains.
 
 ## Usage
 
-**A quick demo** Simply add the github repository directory to your $PYTHONPATH environment and then run the demo_pipeline: 
+**A quick demo** First, please add the github repository directory to your $PYTHONPATH environment, so that the ukbb_cardiac module can be imported and cross-referenced in its code. If you are using Linux, you can run this command:
+```
+export PYTHONPATH=YOUR_GIT_REPOSITORY_PATH:"${PYTHONPATH}" 
+```
+
+To try the demo on the example images, simply run this command:
 ```
 python3 demo_pipeline.py
 ```
