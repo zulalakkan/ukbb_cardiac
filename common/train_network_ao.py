@@ -19,8 +19,8 @@ import numpy as np
 import nibabel as nib
 import tensorflow as tf
 import cv2
-from network import *
-from network_ao import *
+from ukbb_cardiac.common.network import *
+from ukbb_cardiac.common.network_ao import *
 from ukbb_cardiac.common.image_utils import *
 
 
