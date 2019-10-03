@@ -899,8 +899,7 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
             target = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, target_fr)
             source = '{0}/sa_crop_z{1:02d}_fr{2:02d}.nii.gz'.format(output_dir, z, source_fr)
             par = '{0}/ffd_cine_2d_motion.cfg'.format(par_dir)
-            dof = '{0}/ffd_z{1:02d}_pair_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, z,
-                                                                           target_fr, source_fr)
+            dof = '{0}/ffd_z{1:02d}_pair_{2:02d}_to_{3:02d}.dof.gz'.format(output_dir, z, target_fr, source_fr)
             os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
 
         # Compose backward inter-frame transformation fields
