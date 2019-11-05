@@ -41,7 +41,7 @@ tf.app.flags.DEFINE_boolean('seg4', False,
                             'The network is trained using 200 subjects from Application 18545.'
                             'By default, for all the other tasks (ventricular segmentation'
                             'on short-axis images and atrial segmentation on long-axis images,'
-                            'the networks are trained using ~4,000 subjects from Application 2964.')
+                            'the networks are trained using 3,975 subjects from Application 2964.')
 
 
 if __name__ == '__main__':
