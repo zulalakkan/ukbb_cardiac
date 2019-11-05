@@ -38,7 +38,10 @@ tf.app.flags.DEFINE_boolean('save_seg', True,
                             'Save segmentation.')
 tf.app.flags.DEFINE_boolean('seg4', False,
                             'Segment all the 4 chambers in long-axis 4 chamber view. '
-                            'The network is trained using 200 subjects from Application 18545.')
+                            'The network is trained using 200 subjects from Application 18545.'
+                            'By default, for all the other tasks (ventricular segmentation'
+                            'on short-axis images and atrial segmentation on long-axis images,'
+                            'the networks are trained using ~4,000 subjects from Application 2964.')
 
 
 if __name__ == '__main__':
