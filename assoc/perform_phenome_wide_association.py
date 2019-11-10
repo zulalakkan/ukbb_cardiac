@@ -206,6 +206,8 @@ if __name__ == '__main__':
             val_i = df.iloc[:, i]
             val_j = df.iloc[:, j]
             valid_idx = ~np.isnan(val_i) & ~np.isnan(val_j)
+            if np.sum(valid_idx) == 0:
+                continue
             cc, _ = scipy.stats.pearsonr(val_i[valid_idx], val_j[valid_idx])
             if cc > 0.9999:
                 # Keep the column with more valid elements
