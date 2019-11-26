@@ -433,6 +433,7 @@ if __name__ == '__main__':
         # For each anatomical structure, find the non-imaging phenotype that is most related
         row = rows[k]
         log_p = df_log_p.loc[row]
+        corr = df_corr.loc[row]
         log_p_max = np.max(log_p, axis=0)
         log_p_idx = np.argmax(log_p.values, axis=0)
         top_hits = sorted(range(len(log_p_max)), key=lambda x: log_p_max[x], reverse=True)
@@ -446,7 +447,7 @@ if __name__ == '__main__':
             else:
                 line = ''
             line += ' & {0:.1f} & {1:.2f} & {2} & {3} & {4} \\\\'.format(
-                log_p_max[c], df_corr.iloc[r, c], row[r], cols[c][0], cols[c][1])
+                log_p_max[c], corr.iloc[r, c], row[r], cols[c][0], cols[c][1])
             line = re.sub('WT_', 'Wall thickness ', line)
             line = re.sub('_', ' ', line)
             line = re.sub(' \(%\)', '', line)
@@ -468,6 +469,7 @@ if __name__ == '__main__':
         # For each anatomical structure, find the non-imaging phenotype that is most related
         row = rows[k]
         log_p = df_log_p_cat.loc[row]
+        corr = df_corr_cat.loc[row]
         log_p_max = np.max(log_p, axis=0)
         log_p_idx = np.argmax(log_p.values, axis=0)
         top_hits = sorted(range(len(log_p_max)), key=lambda x: log_p_max[x], reverse=True)
@@ -481,7 +483,7 @@ if __name__ == '__main__':
             else:
                 line = ''
             line += ' & {0:.1f} & {1:.2f} & {2} & {3} & {4} \\\\'.format(
-                log_p_max[c], df_corr_cat.iloc[r, c], row[r], cols[c][0], cols[c][1])
+                log_p_max[c], corr.iloc[r, c], row[r], cols[c][0], cols[c][1])
             line = re.sub('WT_', 'Wall thickness ', line)
             line = re.sub('_', ' ', line)
             line = re.sub(' \(%\)', '', line)
@@ -503,6 +505,7 @@ if __name__ == '__main__':
         # For each anatomical structure, find the non-imaging phenotype that is most related
         row = rows[k]
         log_p = df_log_p_cat.loc[row]
+        corr = df_corr_cat.loc[row]
         log_p_max = np.max(log_p, axis=0)
         log_p_idx = np.argmax(log_p.values, axis=0)
         top_hits = sorted(range(len(log_p_max)), key=lambda x: log_p_max[x], reverse=True)
@@ -515,12 +518,8 @@ if __name__ == '__main__':
                 line = '\multirow{{5}}{{*}}{{{0}}}'.format(k)
             else:
                 line = ''
-            if abs(df_corr_cat.iloc[r, c]) < 0.01:
-                line += ' & {0:.1f} & {1:.3f} & {2} & {3} & {4} \\\\'.format(
-                    log_p_max[c], df_corr_cat.iloc[r, c], row[r], cols[c][0], cols[c][1])
-            else:
-                line += ' & {0:.1f} & {1:.2f} & {2} & {3} & {4} \\\\'.format(
-                    log_p_max[c], df_corr_cat.iloc[r, c], row[r], cols[c][0], cols[c][1])
+            line += ' & {0:.1f} & {1:.2f} & {2} & {3} & {4} \\\\'.format(
+                log_p_max[c], corr.iloc[r, c], row[r], cols[c][0], cols[c][1])
             line = re.sub('WT_', 'Wall thickness ', line)
             line = re.sub('_', ' ', line)
             line = re.sub(' \(%\)', '', line)
