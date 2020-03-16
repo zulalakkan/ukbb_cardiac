@@ -18,14 +18,16 @@ The toolbox depends on some external libraries which need to be installed, inclu
 
 * tensorflow for deep learning;
 * numpy and scipy for numerical computation;
+* matplotlib, seaborn for data visulisation;
 * pandas and python-dateutil for handling spreadsheet;
 * pydicom, SimpleITK for handling dicom images
 * nibabel for reading and writing nifti images;
-* opencv-python for transforming images in data augmentation.
+* sciki-image, opencv-python for transforming images in data augmentation;
+* vtk for mesh manipulation.
 
 The most convenient way to install these libraries is to use pip3 (or pip for Python 2) by running this command in the terminal:
 ```
-pip3 install tensorflow-gpu numpy scipy pandas python-dateutil pydicom SimpleITK nibabel opencv-python
+pip3 install tensorflow-gpu numpy scipy matplotlib seaborn pandas python-dateutil pydicom SimpleITK nibabel scikit-image opencv-python vtk
 ```
 
 The toolbox also evaluates cardiac strain on short-axis and long-axis images. To enable strain calculation, [MIRTK](https://github.com/BioMedIA/MIRTK) needs to be installed. MIRTK is a medical image registration toolbox, which is used for performing cardiac motion tracking on short-axis and long-axis images. However, MIRTK is not a mandatory option for using this toolbox. Without MIRTK, the toolbox will still evaluate most of the cardiac imaging phenotypes, other than strains.
