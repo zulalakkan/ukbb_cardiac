@@ -903,8 +903,8 @@ def cine_2d_sa_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
             os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
 
         # Compose backward inter-frame transformation fields
-        os.system('cp {0}/ffd_z{1:02d}_pair_00_to_49.dof.gz '
-                  '{0}/ffd_z{1:02d}_backward_00_to_49.dof.gz'.format(output_dir, z))
+        os.system('cp {0}/ffd_z{1:02d}_pair_00_to_{2:02d}.dof.gz '
+                  '{0}/ffd_z{1:02d}_backward_00_to_{2:02d}.dof.gz'.format(output_dir, z, T - 1))
         for fr in range(T - 2, 0, -1):
             dofs = ''
             for k in range(T - 1, fr - 1, -1):
@@ -1470,8 +1470,8 @@ def cine_2d_la_motion_and_strain_analysis(data_dir, par_dir, output_dir, output_
         os.system('mirtk register {0} {1} -parin {2} -dofout {3}'.format(target, source, par, dof))
 
     # Compose backward inter-frame transformation fields
-    os.system('cp {0}/ffd_la_4ch_pair_00_to_49.dof.gz '
-              '{0}/ffd_la_4ch_backward_00_to_49.dof.gz'.format(output_dir))
+    os.system('cp {0}/ffd_la_4ch_pair_00_to_{1:02d}.dof.gz '
+              '{0}/ffd_la_4ch_backward_00_to_{1:02d}.dof.gz'.format(output_dir, T - 1))
     for fr in range(T - 2, 0, -1):
         dofs = ''
         for k in range(T - 1, fr - 1, -1):

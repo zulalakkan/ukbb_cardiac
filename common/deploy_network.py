@@ -63,6 +63,13 @@ if __name__ == '__main__':
             print(data)
             data_dir = os.path.join(FLAGS.data_dir, data)
 
+            if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
+                seg_name = '{0}/seg4_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+            else:
+                seg_name = '{0}/seg_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+            if os.path.exists(seg_name):
+                continue
+
             if FLAGS.process_seq:
                 # Process the temporal sequence
                 image_name = '{0}/{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
