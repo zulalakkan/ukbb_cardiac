@@ -61,7 +61,7 @@ I have written the following scripts for preparing the UK Biobank cardiac imagin
 
 ## References
 
-We would like to thank all the UK Biobank participants and staff who make the CMR imaging dataset possible and also people from Queen Mary's University London and Oxford University who performed the hard work of manual annotation. In case you find the toolbox or a certain part of it useful, please consider giving appropriate credit to it by citing one or some of the papers here, which respectively describes the segmentation methods [1, 2] and the manual annotation dataset [3]. Thanks.
+We would like to thank all the UK Biobank participants and staff who make the CMR imaging dataset possible and also people from Queen Mary's University London and Oxford University who performed the hard work of manual annotation. In case you find the toolbox or a certain part of it useful, please consider giving appropriate credit to it by citing one or some of the papers here, which respectively describes the image segmentation methods [1, 2], the full analysis pipeline and association studies [3] and the manual annotation dataset [4]. Thanks.
 
 [1] W. Bai, et al. Automated cardiovascular magnetic resonance image analysis with fully convolutional networks. Journal of Cardiovascular Magnetic Resonance, 20:65, 2018. [doi](https://doi.org/10.1186/s12968-018-0471-x)
 
