@@ -20,23 +20,25 @@ import nibabel as nib
 import tensorflow as tf
 from ukbb_cardiac.common.image_utils import rescale_intensity
 
-
 """ Deployment parameters """
-FLAGS = tf.app.flags.FLAGS
-tf.app.flags.DEFINE_enum('seq_name', 'sa',
+FLAGS = tf.compat.v1.flags.FLAGS
+tf.compat.v1.flags.DEFINE_enum('seq_name', 'sa',
                          ['sa', 'la_2ch', 'la_4ch'],
                          'Sequence name.')
-tf.app.flags.DEFINE_string('data_dir', '/vol/bitbucket/wbai/own_work/ukbb_cardiac_demo',
+tf.compat.v1.flags.DEFINE_string('data_dir', '',
                            'Path to the data set directory, under which images '
                            'are organised in subdirectories for each subject.')
-tf.app.flags.DEFINE_string('model_path',
+tf.compat.v1.flags.DEFINE_string('result_dir', '',
+                           'Path to the result set directory, under which images '
+                           'are organised in subdirectories for each subject.')
+tf.compat.v1.flags.DEFINE_string('model_path',
                            '',
                            'Path to the saved trained model.')
-tf.app.flags.DEFINE_boolean('process_seq', True,
+tf.compat.v1.flags.DEFINE_boolean('process_seq', True,
                             'Process a time sequence of images.')
-tf.app.flags.DEFINE_boolean('save_seg', True,
+tf.compat.v1.flags.DEFINE_boolean('save_seg', True,
                             'Save segmentation.')
-tf.app.flags.DEFINE_boolean('seg4', False,
+tf.compat.v1.flags.DEFINE_boolean('seg4', False,
                             'Segment all the 4 chambers in long-axis 4 chamber view. '
                             'This seg4 network is trained using 200 subjects from Application 18545.'
                             'By default, for all the other tasks (ventricular segmentation'
@@ -45,11 +47,11 @@ tf.app.flags.DEFINE_boolean('seg4', False,
 
 
 if __name__ == '__main__':
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    with tf.compat.v1.Session() as sess:
+        sess.run(tf.compat.v1.global_variables_initializer())
 
         # Import the computation graph and restore the variable values
-        saver = tf.train.import_meta_graph('{0}.meta'.format(FLAGS.model_path))
+        saver = tf.compat.v1.train.import_meta_graph('{0}.meta'.format(FLAGS.model_path))
         saver.restore(sess, '{0}'.format(FLAGS.model_path))
 
         print('Start deployment on the data set ...')
@@ -61,8 +63,11 @@ if __name__ == '__main__':
         table_time = []
         for data in data_list:
             print(data)
+            if not os.path.exists('{0}/{1}'.format(FLAGS.result_dir, data)):
+                os.makedirs('{0}/{1}'.format(FLAGS.result_dir, data))
             data_dir = os.path.join(FLAGS.data_dir, data)
-
+            result_dir = os.path.join(FLAGS.result_dir, data)
+            
             if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
                 seg_name = '{0}/seg4_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
             else:
@@ -72,7 +77,7 @@ if __name__ == '__main__':
 
             if FLAGS.process_seq:
                 # Process the temporal sequence
-                image_name = '{0}/{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+                image_name = '{0}/{1}_{2}.nii.gz'.format(data_dir, data, FLAGS.seq_name)
 
                 if not os.path.exists(image_name):
                     print('  Directory {0} does not contain an image with file '
@@ -82,7 +87,7 @@ if __name__ == '__main__':
                 # Read the image
                 print('  Reading {} ...'.format(image_name))
                 nim = nib.load(image_name)
-                image = nim.get_data()
+                image = nim.get_fdata()
                 X, Y, Z, T = image.shape
                 orig_image = image
 
@@ -140,18 +145,18 @@ if __name__ == '__main__':
                     nim2 = nib.Nifti1Image(pred, nim.affine)
                     nim2.header['pixdim'] = nim.header['pixdim']
                     if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
-                        seg_name = '{0}/seg4_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+                        seg_name = '{0}/seg4_{1}.nii.gz'.format(result_dir, FLAGS.seq_name)
                     else:
-                        seg_name = '{0}/seg_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
+                        seg_name = '{0}/seg_{1}.nii.gz'.format(result_dir, FLAGS.seq_name)
                     nib.save(nim2, seg_name)
 
                     for fr in ['ED', 'ES']:
                         nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]], nim.affine),
-                                 '{0}/{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr))
+                                 '{0}/{1}_{2}.nii.gz'.format(result_dir, FLAGS.seq_name, fr))
                         if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
-                            seg_name = '{0}/seg4_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                            seg_name = '{0}/seg4_{1}_{2}.nii.gz'.format(result_dir, FLAGS.seq_name, fr)
                         else:
-                            seg_name = '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
+                            seg_name = '{0}/seg_{1}_{2}.nii.gz'.format(result_dir, FLAGS.seq_name, fr)
                         nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine), seg_name)
             else:
                 # Process ED and ES time frames
@@ -171,7 +176,7 @@ if __name__ == '__main__':
                     # Read the image
                     print('  Reading {} ...'.format(image_name))
                     nim = nib.load(image_name)
-                    image = nim.get_data()
+                    image = nim.get_fdata()
                     X, Y = image.shape[:2]
                     if image.ndim == 2:
                         image = np.expand_dims(image, axis=2)
