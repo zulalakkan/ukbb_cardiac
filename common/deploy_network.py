@@ -132,11 +132,13 @@ if __name__ == '__main__':
                 # ED frame defaults to be the first time frame.
                 # Determine ES frame according to the minimum LV volume.
                 k = {}
-                k['ED'] = 0
+                
                 if FLAGS.seq_name == 'sa' or (FLAGS.seq_name == 'la_4ch' and FLAGS.seg4):
                     k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
+                    k['ED'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
                 else:
                     k['ES'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
+                    k['ED'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
                 print('  ED frame = {:d}, ES frame = {:d}'.format(k['ED'], k['ES']))
 
                 # Save the segmentation
@@ -152,11 +154,11 @@ if __name__ == '__main__':
 
                     for fr in ['ED', 'ES']:
                         nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]], nim.affine),
-                                 '{0}/{1}_{2}.nii.gz'.format(result_dir, FLAGS.seq_name, fr))
+                                 '{0}/{1}_{2}_{3}.nii.gz'.format(result_dir, FLAGS.seq_name, fr, k[fr]))
                         if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
-                            seg_name = '{0}/seg4_{1}_{2}.nii.gz'.format(result_dir, FLAGS.seq_name, fr)
+                            seg_name = '{0}/seg4_{1}_{2}_{3}.nii.gz'.format(result_dir, FLAGS.seq_name, fr, k[fr])
                         else:
-                            seg_name = '{0}/seg_{1}_{2}.nii.gz'.format(result_dir, FLAGS.seq_name, fr)
+                            seg_name = '{0}/seg_{1}_{2}_{3}.nii.gz'.format(result_dir, FLAGS.seq_name, fr, k[fr])
                         nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine), seg_name)
             else:
                 # Process ED and ES time frames
