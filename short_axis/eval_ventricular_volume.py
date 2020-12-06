@@ -31,8 +31,8 @@ if __name__ == '__main__':
     processed_list = []
     for data in data_list:
         data_dir = os.path.join(data_path, data)
-        image_name = '{0}/sa.nii.gz'.format(data_dir)
-        seg_name = '{0}/seg_sa.nii.gz'.format(data_dir)
+        image_name = '{0}/{1}_sa.nii.gz'.format(data_dir, data)
+        seg_name = '{0}/{1}_seg_sa.nii.gz'.format(data_dir, data)
 
         if os.path.exists(image_name) and os.path.exists(seg_name):
             print(data)
@@ -48,11 +48,11 @@ if __name__ == '__main__':
             heart_rate = 60.0 / duration_per_cycle
 
             # Segmentation
-            seg = nib.load(seg_name).get_data()
+            seg = nib.load(seg_name).get_fdata()
 
             frame = {}
-            frame['ED'] = 0
             vol_t = np.sum(seg == 1, axis=(0, 1, 2)) * volume_per_pix
+            frame['ED'] = np.max(vol_t)
             frame['ES'] = np.argmin(vol_t)
 
             val = {}

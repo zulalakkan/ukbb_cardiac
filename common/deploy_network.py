@@ -16,6 +16,7 @@ import os
 import time
 import math
 import numpy as np
+import pandas as pd
 import nibabel as nib
 import tensorflow as tf
 from ukbb_cardiac.common.image_utils import rescale_intensity
@@ -28,9 +29,8 @@ tf.compat.v1.flags.DEFINE_enum('seq_name', 'sa',
 tf.compat.v1.flags.DEFINE_string('data_dir', '',
                            'Path to the data set directory, under which images '
                            'are organised in subdirectories for each subject.')
-tf.compat.v1.flags.DEFINE_string('result_dir', '',
-                           'Path to the result set directory, under which images '
-                           'are organised in subdirectories for each subject.')
+tf.compat.v1.flags.DEFINE_string('result_csv', '',
+                           'Path to the result csv file for ED ES frames.')
 tf.compat.v1.flags.DEFINE_string('model_path',
                            '',
                            'Path to the saved trained model.')
@@ -63,10 +63,7 @@ if __name__ == '__main__':
         table_time = []
         for data in data_list:
             print(data)
-            if not os.path.exists('{0}/{1}'.format(FLAGS.result_dir, data)):
-                os.makedirs('{0}/{1}'.format(FLAGS.result_dir, data))
             data_dir = os.path.join(FLAGS.data_dir, data)
-            result_dir = os.path.join(FLAGS.result_dir, data)
             
             if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
                 seg_name = '{0}/seg4_{1}.nii.gz'.format(data_dir, FLAGS.seq_name)
@@ -141,24 +138,34 @@ if __name__ == '__main__':
                     k['ED'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
                 print('  ED frame = {:d}, ES frame = {:d}'.format(k['ED'], k['ES']))
 
+                # # Record ED ES frames to csv
+                # frames_dict = {
+                #             'Name': data,
+                #             'ED': k['ED'],
+                #             'ES': k['ES'],
+                #         }
+
+                # df = pd.DataFrame(frames_dict)
+                # dt.to_csv('{0}'.format(FLAGS.result_csv)) # relative position
+
                 # Save the segmentation
                 if FLAGS.save_seg:
                     print('  Saving segmentation ...')
                     nim2 = nib.Nifti1Image(pred, nim.affine)
                     nim2.header['pixdim'] = nim.header['pixdim']
                     if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
-                        seg_name = '{0}/seg4_{1}.nii.gz'.format(result_dir, FLAGS.seq_name)
+                        seg_name = '{0}/{1}_seg4_{2}.nii.gz'.format(data_dir, data, FLAGS.seq_name)
                     else:
-                        seg_name = '{0}/seg_{1}.nii.gz'.format(result_dir, FLAGS.seq_name)
+                        seg_name = '{0}/{1}_seg_{2}.nii.gz'.format(data_dir, data, FLAGS.seq_name)
                     nib.save(nim2, seg_name)
 
                     for fr in ['ED', 'ES']:
                         nib.save(nib.Nifti1Image(orig_image[:, :, :, k[fr]], nim.affine),
-                                 '{0}/{1}_{2}_{3}.nii.gz'.format(result_dir, FLAGS.seq_name, fr, k[fr]))
+                                 '{0}/{1}_{2}_{3}.nii.gz'.format(data_dir, data, FLAGS.seq_name, fr))
                         if FLAGS.seq_name == 'la_4ch' and FLAGS.seg4:
-                            seg_name = '{0}/seg4_{1}_{2}_{3}.nii.gz'.format(result_dir, FLAGS.seq_name, fr, k[fr])
+                            seg_name = '{0}/{1}_seg4_{2}_{3}.nii.gz'.format(data_dir, data, FLAGS.seq_name, fr)
                         else:
-                            seg_name = '{0}/seg_{1}_{2}_{3}.nii.gz'.format(result_dir, FLAGS.seq_name, fr, k[fr])
+                            seg_name = '{0}/{1}_seg_{2}_{3}.nii.gz'.format(data_dir, data, FLAGS.seq_name, fr)
                         nib.save(nib.Nifti1Image(pred[:, :, :, k[fr]], nim.affine), seg_name)
             else:
                 # Process ED and ES time frames

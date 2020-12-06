@@ -28,8 +28,7 @@ if __name__ == '__main__':
     print('Creating information spreadsheet folder ...')
     if not os.path.exists('demo_csv'):
         os.makedirs('demo_csv')
-    # for f in ['demo_csv/blood_pressure_info.csv']:
-    #     urllib.request.urlretrieve(URL + f, f)
+
 
     # # Download trained models
     # print('Downloading trained models ...')
@@ -40,9 +39,6 @@ if __name__ == '__main__':
     #               'trained_model/{0}.index'.format(model_name),
     #               'trained_model/{0}.data-00000-of-00001'.format(model_name)]:
     #         urllib.request.urlretrieve(URL + f, f)
-    
-    if not os.path.exists('demo_result'):
-            os.makedirs('demo_result')
 
     # Analyse show-axis images
     print('******************************')
@@ -52,7 +48,7 @@ if __name__ == '__main__':
     # Deploy the segmentation network
     print('Deploying the segmentation network ...')
     os.system('SET CUDA_VISIBLE_DEVICES={0} & python common/deploy_network.py --seq_name sa --data_dir demo_image '
-              '--result_dir demo_result --model_path trained_model/FCN_sa'.format(CUDA_VISIBLE_DEVICES))
+              '--result_csv demo_csv/result.csv --model_path trained_model/FCN_sa'.format(CUDA_VISIBLE_DEVICES))
 
     # Evaluate ventricular volumes
     print('Evaluating ventricular volumes ...')
@@ -78,13 +74,13 @@ if __name__ == '__main__':
     # Deploy the segmentation network
     print('Deploying the segmentation network ...')
     os.system('SET CUDA_VISIBLE_DEVICES={0} & python common/deploy_network.py --seq_name la_2ch --data_dir demo_image '
-              '--result_dir demo_result --model_path trained_model/FCN_la_2ch'.format(CUDA_VISIBLE_DEVICES))
+              '--model_path trained_model/FCN_la_2ch'.format(CUDA_VISIBLE_DEVICES))
 
     os.system('SET CUDA_VISIBLE_DEVICES={0} & python common/deploy_network.py --seq_name la_4ch --data_dir demo_image '
-              '--result_dir demo_result --model_path trained_model/FCN_la_4ch'.format(CUDA_VISIBLE_DEVICES))
+              '--model_path trained_model/FCN_la_4ch'.format(CUDA_VISIBLE_DEVICES))
 
     os.system('SET CUDA_VISIBLE_DEVICES={0} & python common/deploy_network.py --seq_name la_4ch --data_dir demo_image '
-              '--result_dir demo_result --seg4 --model_path trained_model/FCN_la_4ch_seg4'.format(CUDA_VISIBLE_DEVICES))
+              '--seg4 --model_path trained_model/FCN_la_4ch_seg4'.format(CUDA_VISIBLE_DEVICES))
 
     # Evaluate atrial volumes
     print('Evaluating atrial volumes ...')
