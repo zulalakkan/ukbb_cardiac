@@ -53,6 +53,15 @@ if __name__ == '__main__':
         # Import the computation graph and restore the variable values
         saver = tf.compat.v1.train.import_meta_graph('{0}.meta'.format(FLAGS.model_path))
         saver.restore(sess, '{0}'.format(FLAGS.model_path))
+        
+        if os.path.exists('{0}'.format(FLAGS.result_csv)): # If there is a result.csv, delete it
+            os.remove('{0}'.format(FLAGS.result_csv))
+        # Record ED ES frames to csv
+        init = {'Data': [],
+                'ED': [],
+                'ES': [],
+                }
+        df = pd.DataFrame(init)
 
         print('Start deployment on the data set ...')
         start_time = time.time()
@@ -137,16 +146,16 @@ if __name__ == '__main__':
                     k['ES'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
                     k['ED'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
                 print('  ED frame = {:d}, ES frame = {:d}'.format(k['ED'], k['ES']))
-
-                # # Record ED ES frames to csv
-                # frames_dict = {
-                #             'Name': data,
-                #             'ED': k['ED'],
-                #             'ES': k['ES'],
-                #         }
-
-                # df = pd.DataFrame(frames_dict)
-                # dt.to_csv('{0}'.format(FLAGS.result_csv)) # relative position
+                
+                # # Record ED ES frames as DataFrame
+                frames_dict = {
+                            'Data': [data],
+                            'ED': ['{:d}'.format(k['ED'])],
+                            'ES': ['{:d}'.format(k['ES'])],
+                        }
+                
+                df1 = pd.DataFrame(frames_dict)
+                df = df.append(df1, ignore_index = True)
 
                 # Save the segmentation
                 if FLAGS.save_seg:
@@ -232,7 +241,10 @@ if __name__ == '__main__':
                         else:
                             seg_name = '{0}/seg_{1}_{2}.nii.gz'.format(data_dir, FLAGS.seq_name, fr)
                         nib.save(nim2, seg_name)
-
+        
+        # Writing the DataFrame values to result.csv file
+        df.to_csv('{0}'.format(FLAGS.result_csv))
+        
         if FLAGS.process_seq:
             print('Average segmentation time = {:.3f}s per sequence'.format(np.mean(table_time)))
         else:
