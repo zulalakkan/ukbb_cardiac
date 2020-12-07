@@ -25,6 +25,23 @@ from scipy import interpolate
 import skimage
 from ukbb_cardiac.common.image_utils import *
 
+def get_frames(image, seq_name, seg4 = False):
+    """ Determine ES frame according to the minimum LV volume.
+        Determine ED frame according to the maximum LV volume.
+    """
+    
+    masked_image = np.ma.masked_equal(image, 0.0, copy=True)
+    if seq_name == 'sa' or (seq_name == 'la_4ch' and seg4):    
+        frames = {
+            'ES': np.argmin(np.sum(masked_image == 1, axis=(0, 1, 2))),
+            'ED': np.argmax(np.sum(masked_image == 1, axis=(0, 1, 2)))
+        }
+    else:
+        frames = {
+            'ES': np.argmax(np.sum(masked_image == 1, axis=(0, 1, 2))),
+            'ED': np.argmin(np.sum(masked_image == 1, axis=(0, 1, 2)))
+        }
+    return frames
 
 def approximate_contour(contour, factor=4, smooth=0.05, periodic=False):
     """ Approximate a contour.

@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import tensorflow as tf
+from ukbb_cardiac.common.cardiac_utils import get_frames
 from ukbb_cardiac.common.image_utils import rescale_intensity
 
 """ Deployment parameters """
@@ -135,16 +136,7 @@ if __name__ == '__main__':
                 table_time += [seg_time]
                 processed_list += [data]
 
-                # ED frame defaults to be the first time frame.
-                # Determine ES frame according to the minimum LV volume.
-                k = {}
-                
-                if FLAGS.seq_name == 'sa' or (FLAGS.seq_name == 'la_4ch' and FLAGS.seg4):
-                    k['ES'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
-                    k['ED'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
-                else:
-                    k['ES'] = np.argmax(np.sum(pred == 1, axis=(0, 1, 2)))
-                    k['ED'] = np.argmin(np.sum(pred == 1, axis=(0, 1, 2)))
+                k = get_frames(pred, FLAGS.seq_name, FLAGS.seg4)
                 print('  ED frame = {:d}, ES frame = {:d}'.format(k['ED'], k['ES']))
                 
                 # # Record ED ES frames as DataFrame
