@@ -8,7 +8,7 @@ from ukbb_cardiac.common.image_utils import np_categorical_dice
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--output_csv', metavar='csv_name', default='DM_EJ_table.csv', required=True)
+    parser.add_argument('--output_csv', metavar='csv_name', default='DM_table.csv', required=True)
     args = parser.parse_args()
 
     print('Creating accuracy spreadsheet file ...')
@@ -42,11 +42,10 @@ if __name__ == '__main__':
             ##seg_sa_ED ='{0}/{1}_sa_gt.nii.gz'.format(folder_dir, folder) # To see Dice metric between same segmentations is 1
             
             seg_gt = nib.load(seg_sa_ground_truth).get_fdata()
-            #print(seg_gt.shape)
             
             fr = get_frames(seg_gt, 'sa')
-            seg_ED_gt = seg_gt[:, :, :, fr['ED']]  # ED frame value 0
-            seg_ES_gt = seg_gt[:, :, :, fr['ES']]  # ES frame value A4A8 10, C4E9 ->8
+            seg_ED_gt = seg_gt[:, :, :, fr['ED']] 
+            seg_ES_gt = seg_gt[:, :, :, fr['ES']] 
         
             dice_arr = np.zeros(6)
             ind = 0
@@ -57,7 +56,6 @@ if __name__ == '__main__':
                 print('\nFor image {0}, Comparison between: {1} \n'.format(folder, fr))
 
                 seg_model = nib.load(seg_sa_ED).get_fdata() if fr == 'ED' else nib.load(seg_sa_ES).get_fdata()
-                print(seg_model.shape)
                 ##if fr == 'ED' : seg_model = seg_model[:,:,:,0] # To see Dice metric between same segmentations is 1
                 
                 
@@ -99,4 +97,4 @@ if __name__ == '__main__':
         else:
             print('Error! Can not find one of the expected files: {0}/{1}_seg_sa_ED.nii.gz or {0}/{1}_sa_gt.nii.gz'.format(folder_dir, folder))
 
-    df.to_csv(args.output_csv)
+    df.to_csv(args.output_csv, index = False)

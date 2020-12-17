@@ -55,14 +55,12 @@ if __name__ == '__main__':
 
             # Segmentation
             seg = nib.load(seg_name).get_fdata()
-
+            frame = get_frames(seg, 'sa')
 
             # ED ES frames
             if args.eval_gt:
                 gt = nib.load(gt_name).get_fdata()
-                frame = get_frames(gt, 'sa')
-            else:
-                frame = get_frames(seg, 'sa')
+                frame_gt = get_frames(gt, 'sa')
 
 
             val = {}
@@ -72,21 +70,22 @@ if __name__ == '__main__':
                 val['LV{0}M'.format(fr_name)] = np.sum(seg[:, :, :, fr] == 2) * volume_per_pix * density
                 val['RV{0}V'.format(fr_name)] = np.sum(seg[:, :, :, fr] == 3) * volume_per_pix
 
-                if args.eval_gt:
-                    val['LV{0}VGT'.format(fr_name)] = np.sum(gt[:, :, :, fr] == 1) * volume_per_pix
-                    val['LV{0}MGT'.format(fr_name)] = np.sum(gt[:, :, :, fr] == 2) * volume_per_pix * density
-                    val['RV{0}VGT'.format(fr_name)] = np.sum(gt[:, :, :, fr] == 3) * volume_per_pix
+            if args.eval_gt:
+                for fr_gt_name, fr_gt in frame_gt.items():
+                    val['LV{0}VGT'.format(fr_gt_name)] = np.sum(gt[:, :, :, fr_gt] == 1) * volume_per_pix
+                    val['LV{0}MGT'.format(fr_gt_name)] = np.sum(gt[:, :, :, fr_gt] == 2) * volume_per_pix * density
+                    val['RV{0}VGT'.format(fr_gt_name)] = np.sum(gt[:, :, :, fr_gt] == 3) * volume_per_pix
 
             # Left Ventricule for Segmentation
             val['LVSV'] = val['LVEDV'] - val['LVESV']
             # val['LVCO'] = val['LVSV'] * heart_rate * 1e-3
-            val['LVEF'] = val['LVSV'] / val['LVEDV'] * 100
+            val['LVEF'] = val['LVSV'] / val['LVEDV'] * 100 if val['LVEDV'] != 0 else 0
 
             
             # Right Ventricule for Segmentation
             val['RVSV'] = val['RVEDV'] - val['RVESV']
             # val['RVCO'] = val['RVSV'] * heart_rate * 1e-3
-            val['RVEF'] = val['RVSV'] / val['RVEDV'] * 100
+            val['RVEF'] = val['RVSV'] / val['RVEDV'] * 100 if val['RVEDV'] != 0 else 0
 
            
 
@@ -99,11 +98,11 @@ if __name__ == '__main__':
             if args.eval_gt:
                 # Left Ventricule for Ground Truth
                 val['LVSVGT'] = val['LVEDVGT'] - val['LVESVGT']
-                val['LVEFGT'] = val['LVSVGT'] / val['LVEDVGT'] * 100
+                val['LVEFGT'] = val['LVSVGT'] / val['LVEDVGT'] * 100 if val['LVEDVGT'] != 0 else 0
 
                 # Right Ventricule for Ground Truth
                 val['RVSVGT'] = val['RVEDVGT'] - val['RVESVGT']
-                val['RVEFGT'] = val['RVSVGT'] / val['RVEDVGT'] * 100
+                val['RVEFGT'] = val['RVSVGT'] / val['RVEDVGT'] * 100 if val['RVEDVGT'] != 0 else 0
 
                 line_gt = [val['LVEDVGT'], val['LVESVGT'], val['LVSVGT'], val['LVEFGT'], val['LVEDMGT'],
                         val['RVEDVGT'], val['RVESVGT'], val['RVSVGT'], val['RVEFGT']]
