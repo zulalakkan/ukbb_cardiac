@@ -8,6 +8,7 @@ from ukbb_cardiac.common.cardiac_utils import get_frames
 from ukbb_cardiac.common.image_utils import tf_categorical_accuracy, tf_categorical_dice
 from ukbb_cardiac.common.image_utils import crop_image, rescale_intensity, data_augmenter
 
+# modified version of ./common/train_network.py
 def get_random_batch(filename_list, batch_size, image_size=192, data_augmentation=False,
                      shift=0.0, rotate=0.0, scale=0.0, intensity=0.0, flip=False):
     # Randomly select batch_size images from filename_list
@@ -85,6 +86,7 @@ def get_random_batch(filename_list, batch_size, image_size=192, data_augmentatio
     return images, labels, nims
 
 def main(argv=None):
+    TRAIN_ITER = 10000
     data_list = {}
     for k in ['train', 'validation']:
         subset_dir = os.path.join("./dataset", k)
@@ -115,33 +117,14 @@ def main(argv=None):
         saver = tf.compat.v1.train.import_meta_graph("./FCN_sa.meta")
         saver.restore(sess, '{0}'.format("./FCN_sa"))
 
-        #   for tensor in tf.compat.v1.get_default_graph().get_operations():
-        #     print (tensor.name)
-       
-       
-        # Summary writer
-        summary_dir = os.path.join("./log_dir", "model_name")
-        if os.path.exists(summary_dir):
-            os.system('rm -rf {0}'.format(summary_dir))
-        train_writer = tf.compat.v1.summary.FileWriter(os.path.join(summary_dir, 'train'), graph=sess.graph)
-        validation_writer = tf.compat.v1.summary.FileWriter(os.path.join(summary_dir, 'validation'), graph=sess.graph)
-        
-        sess.run(tf.compat.v1.global_variables_initializer()) # gerekli mi gereksiz mi bilemedim
-        graph = tf.compat.v1.get_default_graph()
-        print("Graph: ",graph.control_dependencies('loss'))
-        train_op = tf.compat.v1.get_collection('train_op')
-        heyyo = tf.compat.v1.get_default_graph().get_all_collection_keys()
-        # loss = tf.compat.v1.get_collection('loss')
-        
+        train_op = tf.compat.v1.get_collection('train_op')[0]
         print(train_op)
-        print(heyyo)
-        # Iterate
-        for iteration in range(1, 1 + 10):
+        for iteration in range(TRAIN_ITER):
             # For each iteration, we randomly choose a batch of subjects
             print('Iteration {0}: training...'.format(iteration))
             start_time_iter = time.time()
         
-            images, labels, nims = get_random_batch(data_list['train'],
+            images, labels, _ = get_random_batch(data_list['train'],
                                         batch_size=5,
                                         image_size=192,
                                         data_augmentation=False,
@@ -149,19 +132,23 @@ def main(argv=None):
                                         intensity=0, flip=False)
             
             # Stochastic optimisation using this batch
-            _, train_loss, train_acc = sess.run([train_op, loss, accuracy],
-                                                {image_pl: images, label_pl: labels, training_pl: True})    
+            sess.run([train_op],
+                    {'image:0': images, 'label:0': labels, 'training:0': True})
+              
 
-            print("Training is over")
-            print(train_acc)
+            print('Iteration {} of {} took {:.3f}s'.format(iteration, TRAIN_ITER,
+                                                               time.time() - start_time_iter))
 
+            # Save models after every 1000 iterations (1 epoch)
+            # One epoch needs to go through
+            #   1000 subjects * 2 time frames = 2000 images = 1000 training iterations
+            # if one iteration processes 2 images.
+            if iteration % 1000 == 0:
+                saver.save(sess, save_path=os.path.join("./trained_model", '{0}.ckpt'.format("FCN_sa2")),
+                           global_step=iteration)
 
-
-
-# 
-# for step in range(1000000):
-#     sess.run(train_op)
-
+        print('Training took {:.3f}s in total.\n'.format(time.time() - start_time))
+        print("Training is over")
 
 if __name__ == '__main__':
     tf.compat.v1.app.run()
